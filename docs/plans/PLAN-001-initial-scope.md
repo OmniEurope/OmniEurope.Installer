@@ -3,7 +3,8 @@
 
 > Status: **in progress** (2026-10-07). Lots 1 to 3 done: MSI generator, major upgrade and setup executable,
 > covered by unit tests and by integration tests run in CI. Remaining: a complete interactive run of the wizard,
-> ICE validation, adoption by a first application, automatic updates, optional code signing.
+> ICE validation, adoption by a first application, automatic updates, adoption by the other applications, optional
+> code signing.
 
 ## Objective
 
@@ -73,9 +74,10 @@ updater close it before installing.
   on a real machine once restarted the computer by itself (exit code 1641) because a running instance of the
   application was not closed and its files were in use. Fixed: `REBOOT=ReallySuppress` on every operation (3010 and a
   restart message instead), process path read through `QueryFullProcessImageName`, any instance left running logged.
-  Integration tests in CI (2026-10-07, 4/4) on a fixture product: install and clean uninstall, update to a single
-  entry, downgrade refused (1638), application running before the install closed by the setup, file held by another
-  program giving 3010 without restart. Remaining: a complete interactive run of the wizard.
+  Integration tests in CI (2026-10-07, 5/5) on a fixture product: install, then uninstall leaving no file, folder,
+  shortcut, entry or setting; update to a single entry; downgrade refused (1638); application running before the
+  install closed by the setup; former setup entry removed; file held by another program giving 3010 without restart.
+  Remaining: a complete interactive run of the wizard.
 - Note: check boxes pass `"1"` or an empty string (an MSI condition tests whether the property is set, so `"0"`
   would be true).
 

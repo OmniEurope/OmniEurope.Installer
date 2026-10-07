@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- Command-line front end of the library; how applications call it is not decided yet (PLAN-001). -->
+    <!-- Command-line front end of the library; not packed yet; how applications call it is set in PLAN-001 (Decisions). -->
     <TargetFramework>net10.0-windows</TargetFramework>
     <OutputType>Exe</OutputType>
     <AssemblyName>oe-installer</AssemblyName>

@@ -14,6 +14,9 @@ Notable changes to this project are documented here, following the Keep a Change
 - Windows Installer exit codes (`0`, `3010`, `1603`, `1605`, `1638`, `87`); the computer is never restarted
   automatically (`REBOOT=ReallySuppress` on every operation, `3010` when a restart is still needed).
 - Unit tests (`tests/OmniEurope.Installer.Tests`) and integration tests (`tests/OmniEurope.Installer.IntegrationTests`)
-  running the setup executable for real on a fixture product.
+  running the setup executable for real, quietly, on a fixture product in five scenarios: install then uninstall
+  leaving nothing behind, update to a single entry with a refused downgrade, running application closed, former
+  setup entry removed, file held by another program giving `3010` without restart. They run only with
+  `OE_INSTALLER_INTEGRATION=1` and administrator rights.
 - Continuous integration on Windows (`.github/workflows/ci.yml`): Release build without warnings, unit tests,
   integration tests, mandatory TRX reports.

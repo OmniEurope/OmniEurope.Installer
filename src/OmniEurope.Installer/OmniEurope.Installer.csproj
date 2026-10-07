@@ -11,7 +11,7 @@
     <Authors>OmniEurope contributors</Authors>
     <Company>OmniEurope</Company>
     <Description>Builds Windows Installer packages (MSI) and setup executables for OmniEurope desktop applications.</Description>
-    <PackageTags>installer;msi;auto-update;eupl</PackageTags>
+    <PackageTags>installer;msi;setup;eupl</PackageTags>
     <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryType>git</RepositoryType>

@@ -109,8 +109,9 @@ Exit codes are those of Windows Installer:
 | `1638` | A newer version is already installed |
 | `87` | Invalid argument |
 
-Before installing, the setup closes the application started from its install folder. An instance it cannot
-identify is left running and reported in the log (`left running`).
+Before installing, updating, repairing or uninstalling, the setup closes the application started from its install
+folder. An instance it cannot identify, or one started from another folder, is left running and reported in the log
+(`left running`).
 
 ## Development
 
