@@ -1,10 +1,11 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 # PLAN-001: Initial scope
 
-> Status: **in progress** (2026-10-07). Lots 1 to 4 done: MSI generator, major upgrade, setup executable (covered
-> by unit tests and by integration tests run in CI) and adoption by a first application. Remaining: automatic
-> updates (lot 5, needs a publication place), adoption by the other applications (lot 6), optional code signing
-> (lot 7), a complete interactive run of the wizard, ICE validation, Group Policy deployment test, and the NuGet
+> Status: **in progress** (2026-10-07). Lots 1 to 3 done: MSI generator, major upgrade, setup executable (covered
+> by unit tests and by integration tests run in CI). Lot 4: a first application builds its installer with this
+> tool; its upgrade check with its own build and a Group Policy test remain. Remaining: automatic updates (lot 5,
+> needs a publication place), adoption by the other applications (lot 6), code signing with a payload reader that
+> skips the certificate table (lot 7), a complete interactive run of the wizard, ICE validation, and the NuGet
 > packaging of `oe-installer` once a pipeline builds installers.
 
 ## Objective
@@ -86,13 +87,16 @@ updater close it before installing.
 
 - [x] The application's build script calls this repository (sibling checkout) to produce its MSI and setup
   executable; its previous installer toolchain is removed; its product description lives in its own repository.
-  Done 2026-10-07, the application's installer builds and works.
+  Done 2026-10-07 as reported by the owner: the application's build produces its installer and the application
+  works.
 - [x] Same `UpgradeCode` as the application's previous MSI, so that the new MSI replaces an existing installation
   (proven on a real machine in lot 1).
-- [ ] Removal of the Installed apps entry left by the former setup bundle at the first upgrade: done by the setup
-  executable (lot 3), to be done by the updater (lot 5); the MSI alone cannot look the entry up.
-- Check: the application's build produces the setup; an existing installation moves to the new version with a single
-  entry left; the MSI deployed by Group Policy on a test machine.
+- [x] Removal of the Installed apps entry left by the former setup bundle at the first upgrade, by the setup
+  executable (lot 3, covered by an integration test). The updater (lot 5) must do the same; the MSI alone cannot
+  look the entry up.
+- Check: the application's build produces the setup (done); an existing installation moves to the new version with a
+  single entry left, using the application's own build (not yet re-run since the adoption); the MSI deployed by
+  Group Policy on a test machine (not done).
 
 ## Lot 5: Automatic update
 
@@ -110,4 +114,7 @@ updater close it before installing.
 ## Lot 7: Code signing (optional)
 
 - [ ] Authenticode certificate (owner's decision and purchase), signing of the MSI and the setup executable.
-- Check: `signtool verify /pa` passes and SmartScreen no longer shows "unknown publisher".
+- [ ] The setup payload reader skips the Authenticode certificate table appended after the payload trailer
+  (`SetupPayload`), with a test on a signed setup: today a signed setup executable cannot read its own payload.
+- Check: `signtool verify /pa` passes, the signed setup installs, and SmartScreen no longer shows "unknown
+  publisher".

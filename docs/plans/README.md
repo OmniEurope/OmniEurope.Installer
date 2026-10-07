@@ -14,4 +14,4 @@ describes a piece of work, not the state of the product.
 
 | Plan | Remaining work |
 |---|---|
-| [PLAN-001](PLAN-001-initial-scope.md) | Initial scope: lots 1 to 4 done (MSI, major upgrade, setup executable, first application); remaining: automatic update (needs a publication place), other applications, optional code signing, interactive wizard run, ICE validation, Group Policy test, NuGet packaging of the tool |
+| [PLAN-001](PLAN-001-initial-scope.md) | Initial scope: lots 1 to 3 done (MSI, major upgrade, setup executable), lot 4 adopted by a first application (upgrade check with its build and Group Policy test remaining); remaining: automatic update (needs a publication place), other applications, code signing with a certificate-aware payload reader, interactive wizard run, ICE validation, NuGet packaging of the tool |
