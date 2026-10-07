@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- xunit.v3 runs on Microsoft.Testing.Platform: the test project is its own runner executable. -->
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="xunit.v3" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\OmniEurope.Installer\OmniEurope.Installer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\OmniEurope.Installer.Tests\TempFolder.cs" Link="Shared\TempFolder.cs" />
+    <Compile Include="..\OmniEurope.Installer.Tests\ProcessRunner.cs" Link="Shared\ProcessRunner.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The setup host built by the solution in the same configuration (the tests never build it themselves). -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>SetupHost</_Parameter1>
+      <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\src\OmniEurope.Installer.Setup\bin\$(Configuration)\net472\OmniEurope.Installer.Setup.exe'))</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+</Project>

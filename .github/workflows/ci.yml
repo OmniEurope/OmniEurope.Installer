@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    # Windows only: the MSI is written and read through msi.dll, and the tests extract it with msiexec.
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore OmniEurope.Installer.slnx
+      - name: Build
+        # Directory.Build.props sets TreatWarningsAsErrors: any warning fails this step.
+        run: dotnet build OmniEurope.Installer.slnx --configuration Release --no-restore
+      - name: Unit tests
+        # global.json runs dotnet test on Microsoft.Testing.Platform: xunit.v3 is the runner.
+        run: >-
+          dotnet test --project tests/OmniEurope.Installer.Tests/OmniEurope.Installer.Tests.csproj
+          --configuration Release --no-build --no-progress
+          --report-trx --report-trx-filename tests.trx --results-directory artifacts/tests
+      - name: Verify test results
+        # A run that leaves no result file is a failure, never a silent pass.
+        shell: pwsh
+        run: |
+          if (-not (Get-ChildItem artifacts/tests -Filter tests.trx -Recurse -File)) { throw 'The unit tests produced no TRX.' }
+
+  integration:
+    # GitHub's Windows runners are disposable and run as administrator: the setup executable is run for
+    # real, quietly, on a throwaway fixture product (install, update, downgrade, running app, file in use).
+    runs-on: windows-2025
+    env:
+      OE_INSTALLER_INTEGRATION: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore OmniEurope.Installer.slnx
+      - name: Build
+        # The integration tests run the setup host built here, in the same configuration.
+        run: dotnet build OmniEurope.Installer.slnx --configuration Release --no-restore
+      - name: Integration tests
+        run: >-
+          dotnet test --project tests/OmniEurope.Installer.IntegrationTests/OmniEurope.Installer.IntegrationTests.csproj
+          --configuration Release --no-build --no-progress
+          --report-trx --report-trx-filename integration.trx --results-directory artifacts/integration
+      - name: Verify test results
+        shell: pwsh
+        run: |
+          if (-not (Get-ChildItem artifacts/integration -Filter integration.trx -Recurse -File)) { throw 'The integration tests produced no TRX.' }

@@ -1,0 +1,63 @@
+{
+  // A complete product description: comments are allowed, unknown fields are not.
+  "name": "Sample App",
+  "manufacturer": "OmniEurope",
+  "upgradeCode": "3B8E2F14-6C0D-4A7B-9E51-2D4C7A9F0B63",
+  "mainExecutable": "SampleApp.exe",
+  "installDirectory": ["OmniEurope", "Sample App"],
+  "downgradeErrorMessage": "A newer version of Sample App is already installed.",
+  "exclude": ["*.pdb"],
+  "properties": {
+    "INSTALL_LANGUAGE": "en",
+    "INSTALL_DESKTOP_SHORTCUT": "1",
+    "INSTALL_STARTUP": "1"
+  },
+  "shortcuts": [
+    {
+      "id": "DesktopShortcut",
+      "location": "Desktop",
+      "name": "Sample App",
+      "condition": "INSTALL_DESKTOP_SHORTCUT",
+      "registryKey": "Software\\OmniEurope\\SampleApp",
+      "registryName": "DesktopShortcut"
+    },
+    {
+      "id": "StartMenuShortcut",
+      "location": "ProgramMenu",
+      "folder": "Sample App",
+      "name": "Sample App",
+      "registryKey": "Software\\OmniEurope\\SampleApp",
+      "registryName": "StartMenuShortcut"
+    }
+  ],
+  "setup": {
+    "settingsKey": "Software\\OmniEurope\\SampleApp\\Installer",
+    "languageProperty": "INSTALL_LANGUAGE",
+    "options": [
+      { "property": "INSTALL_DESKTOP_SHORTCUT", "settingName": "DesktopShortcut", "labelFr": "Créer un raccourci sur le bureau", "labelEn": "Create desktop shortcut" },
+      { "property": "INSTALL_STARTUP", "settingName": "Startup", "labelFr": "Démarrer avec Windows", "labelEn": "Start with Windows" }
+    ]
+  },
+  "registryComponents": [
+    {
+      "id": "StartupRegistryEntry",
+      "condition": "INSTALL_STARTUP",
+      "root": "CurrentUser",
+      "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+      "values": [
+        { "name": "Sample App", "type": "String", "value": "\"[INSTALLFOLDER]SampleApp.exe\"" }
+      ]
+    },
+    {
+      "id": "InstallerSettings",
+      "root": "CurrentUser",
+      "key": "Software\\OmniEurope\\SampleApp\\Installer",
+      "values": [
+        { "name": "Language", "type": "String", "value": "[INSTALL_LANGUAGE]" },
+        { "name": "InstallFolder", "type": "String", "value": "[INSTALLFOLDER]" },
+        { "name": "DesktopShortcut", "type": "String", "value": "[INSTALL_DESKTOP_SHORTCUT]" },
+        { "name": "Startup", "type": "String", "value": "[INSTALL_STARTUP]" }
+      ]
+    }
+  ]
+}

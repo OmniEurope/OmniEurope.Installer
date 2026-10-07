@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OmniEurope.Installer/OmniEurope.Installer.csproj" />
+    <Project Path="src/OmniEurope.Installer.Setup/OmniEurope.Installer.Setup.csproj" />
+    <Project Path="src/OmniEurope.Installer.Tool/OmniEurope.Installer.Tool.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OmniEurope.Installer.IntegrationTests/OmniEurope.Installer.IntegrationTests.csproj" />
+    <Project Path="tests/OmniEurope.Installer.Tests/OmniEurope.Installer.Tests.csproj" />
+  </Folder>
+</Solution>

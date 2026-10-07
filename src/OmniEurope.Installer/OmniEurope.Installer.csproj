@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- msi.dll exists only on Windows: the package targets Windows explicitly (CA1416 then holds). -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- LibraryImport generates the msi.dll marshalling code, which needs unsafe blocks. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Every public member carries an XML doc (CS1591 is an error under TreatWarningsAsErrors). -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>OmniEurope.Installer</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>OmniEurope contributors</Authors>
+    <Company>OmniEurope</Company>
+    <Description>Builds Windows Installer packages (MSI) and setup executables for OmniEurope desktop applications.</Description>
+    <PackageTags>installer;msi;auto-update;eupl</PackageTags>
+    <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryType>git</RepositoryType>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OmniEurope.Installer.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- xunit.v3 runs on Microsoft.Testing.Platform: the test project is its own runner executable. -->
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.MTP" />
+    <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="xunit.v3" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\OmniEurope.Installer\OmniEurope.Installer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Logic of the net472 setup host without WinForms, compiled into the tests as it is (link). -->
+    <Compile Include="..\..\src\OmniEurope.Installer.Setup\SetupCommandLine.cs" Link="SetupHost\SetupCommandLine.cs" />
+    <Compile Include="..\..\src\OmniEurope.Installer.Setup\SetupDecision.cs" Link="SetupHost\SetupDecision.cs" />
+    <Compile Include="..\..\src\OmniEurope.Installer.Setup\SetupMode.cs" Link="SetupHost\SetupMode.cs" />
+    <Compile Include="..\..\src\OmniEurope.Installer.Setup\MsiProgress.cs" Link="SetupHost\MsiProgress.cs" />
+    <Compile Include="..\..\src\OmniEurope.Installer.Setup\InstallChoices.cs" Link="SetupHost\InstallChoices.cs" />
+    <Compile Include="..\..\src\OmniEurope.Installer.Setup\ProgressAnimation.cs" Link="SetupHost\ProgressAnimation.cs" />
+    <Compile Include="..\..\src\OmniEurope.Installer.Setup\LegacyBundles.cs" Link="SetupHost\LegacyBundles.cs" />
+    <Compile Include="..\..\src\OmniEurope.Installer.Setup\MsiCommandLines.cs" Link="SetupHost\MsiCommandLines.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Samples\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

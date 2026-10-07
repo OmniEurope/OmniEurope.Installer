@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- .NET Framework 4.7.2 ships with Windows 10 1803+ and Windows 11: the setup program carries no
+         runtime and stays small. The MSI and the product configuration are appended to the built exe
+         by oe-installer (SetupPayload). -->
+    <TargetFramework>net472</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>OmniEurope.Installer.Setup</AssemblyName>
+    <RootNamespace>OmniEurope.Installer.Setup</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Prefer32Bit>false</Prefer32Bit>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Runtime.Serialization" />
+    <!-- net472 reference assemblies, so no .NET Framework targeting pack is needed on the build machine. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- One source of truth for the payload format, shared with the library that writes it. -->
+    <Compile Include="..\OmniEurope.Installer\Setup\SetupConfig.cs" Link="Shared\SetupConfig.cs" />
+    <Compile Include="..\OmniEurope.Installer\Setup\SetupOption.cs" Link="Shared\SetupOption.cs" />
+    <Compile Include="..\OmniEurope.Installer\Setup\SetupPayload.cs" Link="Shared\SetupPayload.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OmniEurope.Installer.Tests" />
+  </ItemGroup>
+
+</Project>
