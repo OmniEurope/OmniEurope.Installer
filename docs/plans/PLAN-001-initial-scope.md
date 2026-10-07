@@ -1,10 +1,11 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 # PLAN-001: Initial scope
 
-> Status: **in progress** (2026-10-07). Lots 1 to 3 done: MSI generator, major upgrade and setup executable,
-> covered by unit tests and by integration tests run in CI. Remaining: a complete interactive run of the wizard,
-> ICE validation, adoption by a first application, automatic updates, adoption by the other applications, optional
-> code signing.
+> Status: **in progress** (2026-10-07). Lots 1 to 4 done: MSI generator, major upgrade, setup executable (covered
+> by unit tests and by integration tests run in CI) and adoption by a first application. Remaining: automatic
+> updates (lot 5, needs a publication place), adoption by the other applications (lot 6), optional code signing
+> (lot 7), a complete interactive run of the wizard, ICE validation, Group Policy deployment test, and the NuGet
+> packaging of `oe-installer` once a pipeline builds installers.
 
 ## Objective
 
@@ -83,8 +84,9 @@ updater close it before installing.
 
 ## Lot 4: First application
 
-- [ ] The application's build script calls this repository (sibling checkout) to produce its MSI and setup
-  executable; its previous installer toolchain is removed.
+- [x] The application's build script calls this repository (sibling checkout) to produce its MSI and setup
+  executable; its previous installer toolchain is removed; its product description lives in its own repository.
+  Done 2026-10-07, the application's installer builds and works.
 - [x] Same `UpgradeCode` as the application's previous MSI, so that the new MSI replaces an existing installation
   (proven on a real machine in lot 1).
 - [ ] Removal of the Installed apps entry left by the former setup bundle at the first upgrade: done by the setup
