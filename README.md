@@ -34,7 +34,16 @@ A product is described in JSON (comments allowed, unknown fields rejected):
       "registryKey": "Software\\OmniEurope\\SampleApp", "registryName": "DesktopShortcut"
     }
   ],
-  "registryComponents": [],                                 // HKCU or HKLM values, optionally conditional
+  "registryComponents": [
+    {
+      // Records the choices so that the next setup run (update, repair) starts from them.
+      "id": "InstallerSettings", "root": "CurrentUser", "key": "Software\\OmniEurope\\SampleApp\\Installer",
+      "values": [
+        { "name": "InstallFolder", "type": "String", "value": "[INSTALLFOLDER]" },
+        { "name": "DesktopShortcut", "type": "String", "value": "[INSTALL_DESKTOP_SHORTCUT]" }
+      ]
+    }
+  ],
   "setup": {                                                // wizard of the setup executable
     "settingsKey": "Software\\OmniEurope\\SampleApp\\Installer",
     "options": [
@@ -46,6 +55,23 @@ A product is described in JSON (comments allowed, unknown fields rejected):
 ```
 
 A complete example is [tests/OmniEurope.Installer.Tests/Samples/product.json](tests/OmniEurope.Installer.Tests/Samples/product.json).
+
+| Field | Meaning |
+|---|---|
+| `name`, `manufacturer` | Shown in Installed apps |
+| `upgradeCode` | Identity shared by every version; a new version replaces any installed one with the same code |
+| `mainExecutable` | Executable relative to the published folder: shortcut target and icon source |
+| `installDirectory` | Folder chain under 64-bit Program Files; the last one is `INSTALLFOLDER` |
+| `downgradeErrorMessage` | Shown when a newer version is already installed |
+| `properties` | Public properties and their defaults; the command line can override them |
+| `exclude` | File name patterns (`*`, `?`) left out of the published folder |
+| `shortcuts[]` | `id`, `location` (`ProgramMenu` or `Desktop`), `folder` (Start menu sub-folder), `name`, `description`, `condition`, and the HKCU `registryKey`/`registryName` that records the shortcut |
+| `registryComponents[]` | `id`, `condition`, `root` (`CurrentUser` or `LocalMachine`), `key`, `values[]` of `name` (omitted for the default value), `type` (`String` or `Integer`) and `value` (may reference properties such as `[INSTALLFOLDER]`) |
+| `setup.settingsKey` | HKCU key read to prefill the wizard: `InstallFolder`, `Language` and each option's `settingName`, as written by a registry component |
+| `setup.languageProperty` | Public property receiving `fr` or `en`; omitted when the product has no language choice |
+| `setup.options[]` | Check boxes: `property` (`"1"` when checked, empty otherwise), `settingName`, `labelFr`, `labelEn` |
+| `setup.legacyBundleUpgradeCodes` | BundleUpgradeCodes of former setup bundles whose Installed apps entry is removed after a successful operation |
+| `setup.licenseNoticeFr` | French note shown above the license text |
 
 ## Building a package
 
@@ -97,8 +123,9 @@ Warnings are errors. The continuous integration (`.github/workflows/ci.yml`, Win
 the unit tests on every push and pull request to `main` and `develop`.
 
 A second job runs `tests/OmniEurope.Installer.IntegrationTests`: the setup executable is run for real, quietly, on a
-throwaway fixture product (install and clean uninstall, update to a single entry, refused downgrade, running
-application closed, file held by another program giving `3010` without restart). These tests install on the machine:
+throwaway fixture product (install, then uninstall leaving no file, folder, shortcut, entry or setting; update to a
+single entry; refused downgrade; running application closed; former setup entry removed; file held by another
+program giving `3010` without restart). These tests install on the machine:
 they refuse to run without `OE_INSTALLER_INTEGRATION=1` and administrator rights, and are meant for a disposable
 machine.
 

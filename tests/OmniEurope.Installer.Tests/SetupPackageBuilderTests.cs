@@ -30,7 +30,7 @@ public sealed class SetupPackageBuilderTests : IDisposable
         payload.Config.UpgradeCode.ShouldBe("{6D1C2B6E-4F0A-4C47-9C4E-0E0F3C2D1A55}");
         payload.Config.MainComponentId.ShouldBe(MsiNames.StableGuid(definition.UpgradeCode, "file:Sample.exe"));
         payload.Config.Options.Single().DefaultChecked.ShouldBeTrue();
-        payload.Config.LegacyBundleUpgradeCodes.ShouldBe(["{E7F3A1C2-D5B6-47E8-9FA0-1B2C3D4E5F60}"]);
+        payload.Config.LegacyBundleUpgradeCodes.ShouldBe(["{C4D19E62-7B3A-4E85-A0F7-2B6D8C1E5A93}"]);
         string extracted = _temp.Combine("extracted.msi");
         SetupPayload.Extract(input, payload.MsiOffset, payload.MsiLength, extracted);
         File.ReadAllBytes(extracted).ShouldBe(File.ReadAllBytes(msi));
@@ -90,7 +90,7 @@ public sealed class SetupPackageBuilderTests : IDisposable
             {
                 SettingsKey = @"Software\OmniEurope\App\Installer",
                 Options = [new SetupOptionDefinition { Property = "INSTALL_STARTUP", SettingName = "Startup", LabelFr = "Démarrer", LabelEn = "Start" }],
-                LegacyBundleUpgradeCodes = [Guid.Parse("E7F3A1C2-D5B6-47E8-9FA0-1B2C3D4E5F60")],
+                LegacyBundleUpgradeCodes = [Guid.Parse("C4D19E62-7B3A-4E85-A0F7-2B6D8C1E5A93")],
             },
         };
         MsiBuildResult result = MsiPackageBuilder.Build(definition, new MsiBuildRequest(source, "2.1.0", _temp.Combine("app.msi")));

@@ -23,7 +23,11 @@ public sealed class FixtureProduct : IDisposable
     public const string SettingsKey = @"Software\OmniEurope\InstallerFixture\Installer";
     public const string OptInVariable = "OE_INSTALLER_INTEGRATION";
 
+    private const string UninstallKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
+    private const string LegacyEntryName = "OmniEurope.Installer.Fixture.FormerBundle";
+
     private static readonly Guid UpgradeCode = Guid.Parse("8F3B6C41-2D7E-4A95-B1C8-5E0F9A7D3C26");
+    private static readonly Guid LegacyBundleCode = Guid.Parse("2E9A7C50-1B4D-4F83-96E2-7D0C5A3B8F14");
 
     private readonly TempFolder _temp = new();
 
@@ -92,6 +96,27 @@ public sealed class FixtureProduct : IDisposable
         return settings?.GetValue("InstallFolder") as string;
     }
 
+    /// <summary>
+    /// An Installed apps entry as a former setup bundle leaves it: the fixture's legacy BundleUpgradeCode and
+    /// a quiet uninstall command that, as the real one would, removes the entry itself.
+    /// </summary>
+    public static void CreateLegacyEntry()
+    {
+        using RegistryKey root = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+        using RegistryKey entry = root.CreateSubKey($@"{UninstallKey}\{LegacyEntryName}");
+        entry.SetValue("DisplayName", $"{Name} (former setup)");
+        entry.SetValue("BundleUpgradeCode", new[] { LegacyBundleCode.ToString("B").ToUpperInvariant() }, RegistryValueKind.MultiString);
+        string reg = Path.Combine(Environment.SystemDirectory, "reg.exe");
+        entry.SetValue("QuietUninstallString", $"\"{reg}\" delete \"HKLM\\{UninstallKey}\\{LegacyEntryName}\" /f /reg:64");
+    }
+
+    public static bool LegacyEntryExists()
+    {
+        using RegistryKey root = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+        using RegistryKey? entry = root.OpenSubKey($@"{UninstallKey}\{LegacyEntryName}");
+        return entry is not null;
+    }
+
     /// <summary>Runs a setup quietly; returns its exit code and its log (UTF-16, as Windows Installer writes it).</summary>
     public (int ExitCode, string Log) Run(string setup, params string[] arguments)
     {
@@ -146,7 +171,7 @@ public sealed class FixtureProduct : IDisposable
                     Values = [new RegistryValueDefinition { Name = "InstallFolder", Type = RegistryValueType.String, Value = "[INSTALLFOLDER]" }],
                 },
             ],
-            Setup = new SetupDefinition { SettingsKey = SettingsKey },
+            Setup = new SetupDefinition { SettingsKey = SettingsKey, LegacyBundleUpgradeCodes = [LegacyBundleCode] },
         };
         MsiBuildResult msi = MsiPackageBuilder.Build(definition, new MsiBuildRequest(source, version, _temp.Combine($"fixture-{version}.msi")));
         string setup = _temp.Combine($"fixture-{version}-Setup.exe");
@@ -158,12 +183,28 @@ public sealed class FixtureProduct : IDisposable
     // A previous run that stopped half-way must not leave the fixture installed for the next scenario.
     private void RemoveLeftovers()
     {
+        string folder = InstallFolder + Path.DirectorySeparatorChar;
         foreach (Process process in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(MainExecutable)))
         {
             using (process)
             {
-                process.Kill();
-                process.WaitForExit();
+                // Only the fixture's own instances: a program of the same name elsewhere is left alone.
+                string? path;
+                try
+                {
+                    path = process.MainModule?.FileName;
+                }
+                catch (Exception exception) when (exception is InvalidOperationException or System.ComponentModel.Win32Exception)
+                {
+                    // Already gone, or not ours to inspect: either way not a fixture instance to stop.
+                    continue;
+                }
+
+                if (path is not null && path.StartsWith(folder, StringComparison.OrdinalIgnoreCase) && !process.HasExited)
+                {
+                    process.Kill();
+                    process.WaitForExit();
+                }
             }
         }
 
@@ -171,5 +212,8 @@ public sealed class FixtureProduct : IDisposable
         {
             ProcessRunner.Run("msiexec.exe", "/x", productCode, "/qn", "REBOOT=ReallySuppress");
         }
+
+        using RegistryKey root = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+        root.DeleteSubKeyTree($@"{UninstallKey}\{LegacyEntryName}", throwOnMissingSubKey: false);
     }
 }

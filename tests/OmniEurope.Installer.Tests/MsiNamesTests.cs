@@ -31,7 +31,7 @@ public sealed class MsiNamesTests
     [Fact]
     public void Identifiers_and_guids_are_stable_and_case_insensitive()
     {
-        var scope = Guid.Parse("003E3479-DAD8-4570-8DA8-25D967F58BBD");
+        var scope = Guid.Parse("5A0C1E7B-93D4-4F62-B8A1-6E2D0F4C9B17");
 
         MsiNames.Identifier('f', @"wwwroot\app.css").ShouldBe(MsiNames.Identifier('f', @"WWWROOT\App.css"));
         MsiNames.StableGuid(scope, "file:a.dll").ShouldBe(MsiNames.StableGuid(scope, "file:A.DLL"));

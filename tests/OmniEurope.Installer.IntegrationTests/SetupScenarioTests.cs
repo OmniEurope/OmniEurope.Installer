@@ -45,7 +45,9 @@ public sealed class SetupScenarioTests : IClassFixture<FixtureProduct>, IDisposa
 
         FixtureProduct.Entries().ShouldBeEmpty();
         Directory.Exists(FixtureProduct.InstallFolder).ShouldBeFalse();
+        Directory.Exists(Path.GetDirectoryName(FixtureProduct.InstallFolder)).ShouldBeFalse("the manufacturer folder created by the install");
         File.Exists(FixtureProduct.StartMenuShortcut).ShouldBeFalse();
+        Directory.Exists(Path.GetDirectoryName(FixtureProduct.StartMenuShortcut)).ShouldBeFalse("the Start menu folder created by the install");
         FixtureProduct.RecordedInstallFolder().ShouldBeNull();
     }
 
@@ -72,14 +74,35 @@ public sealed class SetupScenarioTests : IClassFixture<FixtureProduct>, IDisposa
         _fixture.Run(_fixture.SetupV1).ExitCode.ShouldBe(Success);
         string executable = Path.Combine(FixtureProduct.InstallFolder, FixtureProduct.MainExecutable);
         using Process running = Process.Start(new ProcessStartInfo(executable, "/d /c ping -n 300 127.0.0.1 >nul") { CreateNoWindow = true })!;
+        try
+        {
+            (int exitCode, string log) = _fixture.Run(_fixture.SetupV2);
 
-        (int exitCode, string log) = _fixture.Run(_fixture.SetupV2);
+            exitCode.ShouldBe(Success);
+            log.ShouldContain($"Closing FixtureApp (PID {running.Id})");
+            log.ShouldNotContain("left running");
+            running.HasExited.ShouldBeTrue();
+            File.ReadAllText(Path.Combine(FixtureProduct.InstallFolder, FixtureProduct.DataFile)).ShouldBe("version 2.0.0");
+        }
+        finally
+        {
+            Stop(running);
+        }
+    }
+
+    [Fact]
+    public void The_entry_left_by_a_former_setup_is_removed_after_installing()
+    {
+        FixtureProduct.CreateLegacyEntry();
+        FixtureProduct.LegacyEntryExists().ShouldBeTrue();
+
+        (int exitCode, string log) = _fixture.Run(_fixture.SetupV1);
 
         exitCode.ShouldBe(Success);
-        log.ShouldContain($"Closing FixtureApp (PID {running.Id})");
-        log.ShouldNotContain("left running");
-        running.HasExited.ShouldBeTrue();
-        File.ReadAllText(Path.Combine(FixtureProduct.InstallFolder, FixtureProduct.DataFile)).ShouldBe("version 2.0.0");
+        log.ShouldContain("Removing the former setup entry");
+        log.ShouldContain("Former setup removal exit code 0");
+        FixtureProduct.LegacyEntryExists().ShouldBeFalse();
+        FixtureProduct.Entries().ShouldHaveSingleItem();
     }
 
     [Fact]
@@ -91,11 +114,11 @@ public sealed class SetupScenarioTests : IClassFixture<FixtureProduct>, IDisposa
         // Another program, outside the install folder, keeps the file open without delete sharing:
         // Windows Installer can replace it only at the next restart.
         string held = Path.Combine(Path.GetTempPath(), $"oe-fixture-held-{Guid.NewGuid():N}");
-        string holder = $"$s = [IO.File]::Open('{data}', 'Open', 'Read', 'Read'); New-Item -ItemType File '{held}' | Out-Null; Start-Sleep -Seconds 300";
+        string holder = $"$s = [IO.File]::Open({Quoted(data)}, 'Open', 'Read', 'Read'); New-Item -ItemType File {Quoted(held)} | Out-Null; Start-Sleep -Seconds 300";
         using Process holding = Process.Start(new ProcessStartInfo("powershell.exe", ["-NoProfile", "-Command", holder]) { CreateNoWindow = true })!;
-        WaitForFile(held, holding);
         try
         {
+            WaitForFile(held, holding);
             (int exitCode, string log) = _fixture.Run(_fixture.SetupV2);
 
             exitCode.ShouldBe(SuccessRestartRequired, log.Length > 4000 ? log[^4000..] : log);
@@ -103,9 +126,20 @@ public sealed class SetupScenarioTests : IClassFixture<FixtureProduct>, IDisposa
         }
         finally
         {
-            holding.Kill();
-            holding.WaitForExit();
+            Stop(holding);
             File.Delete(held);
+        }
+    }
+
+    // A PowerShell single-quoted literal: a quote inside the path is doubled.
+    private static string Quoted(string path) => $"'{path.Replace("'", "''")}'";
+
+    private static void Stop(Process process)
+    {
+        if (!process.HasExited)
+        {
+            process.Kill();
+            process.WaitForExit();
         }
     }
 

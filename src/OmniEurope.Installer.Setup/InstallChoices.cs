@@ -12,7 +12,7 @@ namespace OmniEurope.Installer.Setup;
 /// </summary>
 internal sealed class InstallChoices
 {
-    // Value names the product's MSI writes under SetupConfig.SettingsKey (see products/*/product.json).
+    // Value names the product's MSI writes under SetupConfig.SettingsKey (its "InstallerSettings" registry component).
     public const string LanguageSetting = "Language";
     public const string InstallFolderSetting = "InstallFolder";
 
