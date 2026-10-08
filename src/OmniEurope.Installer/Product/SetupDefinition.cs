@@ -3,7 +3,11 @@ namespace OmniEurope.Installer.Product;
 /// <summary>The wizard of the setup executable: which choices it offers and what it cleans up.</summary>
 public sealed record SetupDefinition
 {
-    /// <summary>HKCU key where the MSI records the choices (see the registry components); read to prefill the wizard.</summary>
+    /// <summary>
+    /// Key where the MSI records the choices, through a registry component with the <see cref="RegistryRoot.Installation"/>
+    /// root; read to prefill the wizard from the hive of the installed context (HKCU for an older per-machine
+    /// installation that recorded them there).
+    /// </summary>
     public required string SettingsKey { get; init; }
 
     /// <summary>Public property receiving "fr" or "en"; null when the product has no language choice.</summary>

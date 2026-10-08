@@ -50,7 +50,7 @@
     },
     {
       "id": "InstallerSettings",
-      "root": "CurrentUser",
+      "root": "Installation",
       "key": "Software\\OmniEurope\\SampleApp\\Installer",
       "values": [
         { "name": "Language", "type": "String", "value": "[INSTALL_LANGUAGE]" },

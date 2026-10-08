@@ -1,15 +1,18 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace OmniEurope.Installer.Setup;
 
 /// <summary>
-/// The installation wizard: Language, License, Directory, Progress, Complete for a first installation;
+/// The installation wizard: Language, Scope (for me or for all users), License, Directory, Progress, Complete for a
+/// first installation;
 /// Maintenance (update, repair or uninstall) when the product is already there. The operation runs on
 /// a background thread; this form only follows its progress.
 /// </summary>
@@ -19,6 +22,9 @@ internal sealed class WizardForm : Form
 
     private readonly SetupSession _session;
     private readonly SetupCommandLine _commandLine;
+    private readonly IReadOnlyList<string> _arguments;
+    private readonly bool _askScope;
+    private readonly bool _elevated = Elevation.IsElevated();
     private readonly WizardText _text;
     private readonly WizardPages _pages;
     private readonly ProgressAnimator _animator;
@@ -31,12 +37,15 @@ internal sealed class WizardForm : Form
     private SetupAction _action = SetupAction.Install;
     private bool _busy;
 
-    public WizardForm(SetupSession session, SetupCommandLine commandLine)
+    public WizardForm(SetupSession session, SetupCommandLine commandLine, IReadOnlyList<string> arguments)
     {
         _session = session;
         _commandLine = commandLine;
+        _arguments = arguments;
         _text = new WizardText(session.Config.ProductName);
-        _choices = session.InitialChoices();
+        // Asked only for a first installation whose context the command line left open; "for me only" is preselected.
+        _askScope = session.Scope is null;
+        _choices = session.InitialChoices(session.Scope ?? InstallScope.PerUser);
 
         AutoScaleMode = AutoScaleMode.Dpi;
         ClientSize = new Size(500, 380);
@@ -59,7 +68,9 @@ internal sealed class WizardForm : Form
         WireControls();
         LoadChoices();
         ApplyLanguage();
-        ShowPage(session.Mode == SetupMode.Install ? WizardPage.Language : WizardPage.Maintenance);
+        // A run started again with administrator rights already knows its language: it goes on past the first pages.
+        ShowPage(session.Mode != SetupMode.Install ? WizardPage.Maintenance
+            : commandLine.Language is not null && !_askScope ? PageAfterScope() : WizardPage.Language);
     }
 
     /// <summary>Exit code of the setup program: the Windows Installer result, 1602 when cancelled.</summary>
@@ -69,7 +80,7 @@ internal sealed class WizardForm : Form
     public static void RenderPages(SetupSession session, SetupCommandLine commandLine, string folder)
     {
         Directory.CreateDirectory(folder);
-        using var form = new WizardForm(session, commandLine) { StartPosition = FormStartPosition.Manual, Location = new Point(-10000, -10000) };
+        using var form = new WizardForm(session, commandLine, Array.Empty<string>()) { StartPosition = FormStartPosition.Manual, Location = new Point(-10000, -10000) };
         form.Show();
         foreach (bool french in new[] { true, false })
         {
@@ -120,6 +131,7 @@ internal sealed class WizardForm : Form
         _pages.AcceptBox.CheckedChanged += (_, _) => UpdateButtons();
         _pages.FolderBox.TextChanged += (_, _) => UpdateButtons();
         _pages.RepairChoice.CheckedChanged += (_, _) => UpdateButtons();
+        _pages.ForAllChoice.CheckedChanged += (_, _) => OnScopeChanged();
         _pages.BrowseButton.Click += OnBrowse;
         _pages.LogLink.LinkClicked += (_, _) => OpenLog();
         _session.ProgressChanged += percent => SafeInvoke(() => _animator.Report(percent));
@@ -128,7 +140,7 @@ internal sealed class WizardForm : Form
 
     private void LoadChoices()
     {
-        _pages.LanguageBox.SelectedIndex = _choices.Language == "en" ? 1 : 0;
+        _pages.LanguageBox.SelectedIndex = (_commandLine.Language ?? _choices.Language) == "en" ? 1 : 0;
         _pages.FolderBox.Text = _choices.InstallFolder;
         foreach ((SetupOption option, CheckBox box) in _pages.OptionBoxes)
         {
@@ -186,20 +198,21 @@ internal sealed class WizardForm : Form
 
     private void UpdateButtons()
     {
-        bool wizardPage = _page is WizardPage.Language or WizardPage.License or WizardPage.Directory or WizardPage.Maintenance;
-        _back.Visible = _page is WizardPage.License or WizardPage.Directory;
+        bool wizardPage = _page is WizardPage.Language or WizardPage.Scope or WizardPage.License or WizardPage.Directory or WizardPage.Maintenance;
+        _back.Visible = _page is WizardPage.Scope or WizardPage.License or WizardPage.Directory;
         _next.Visible = wizardPage;
         _next.Enabled = _page switch
         {
             WizardPage.License => _pages.AcceptBox.Checked,
             WizardPage.Directory => !string.IsNullOrWhiteSpace(_pages.FolderBox.Text),
-            WizardPage.Maintenance => _session.Mode != SetupMode.Downgrade,
+            WizardPage.Maintenance => SetupDecision.CanProceed(_session.Mode, _pages.UninstallChoice.Checked),
             _ => true,
         };
         _next.Text = NextText();
         _back.Text = _text.Back;
         _cancel.Text = _page == WizardPage.Complete ? _text.Close : _text.Cancel;
         _cancel.Enabled = _page != WizardPage.Progress;
+        SetShield(_next, _page == WizardPage.Scope && SetupDecision.NeedsElevation(ChosenScope(), _elevated));
     }
 
     private string NextText() => _page switch
@@ -215,7 +228,10 @@ internal sealed class WizardForm : Form
         switch (_page)
         {
             case WizardPage.Language:
-                ShowPage(_pages.HasLicense ? WizardPage.License : WizardPage.Directory);
+                ShowPage(_askScope ? WizardPage.Scope : PageAfterScope());
+                break;
+            case WizardPage.Scope:
+                ChooseScope();
                 break;
             case WizardPage.License:
                 ShowPage(WizardPage.Directory);
@@ -239,9 +255,71 @@ internal sealed class WizardForm : Form
         }
         else if (_page is WizardPage.License or WizardPage.Directory)
         {
+            ShowPage(_askScope ? WizardPage.Scope : WizardPage.Language);
+        }
+        else if (_page == WizardPage.Scope)
+        {
             ShowPage(WizardPage.Language);
         }
     }
+
+    private WizardPage PageAfterScope() => _pages.HasLicense ? WizardPage.License : WizardPage.Directory;
+
+    private InstallScope ChosenScope() => _pages.ForAllChoice.Checked ? InstallScope.PerMachine : InstallScope.PerUser;
+
+    // The default folder follows the context, unless the user already typed another one.
+    private void OnScopeChanged()
+    {
+        InstallScope chosen = ChosenScope();
+        InstallScope other = chosen == InstallScope.PerUser ? InstallScope.PerMachine : InstallScope.PerUser;
+        if (string.Equals(_pages.FolderBox.Text.Trim(), _session.DefaultInstallFolder(other), StringComparison.OrdinalIgnoreCase))
+        {
+            _pages.FolderBox.Text = _session.DefaultInstallFolder(chosen);
+        }
+
+        UpdateButtons();
+    }
+
+    // For all users without administrator rights: this setup runs again elevated, from the page after this one, and
+    // this window waits hidden to return its exit code. A declined prompt brings the choice back.
+    private void ChooseScope()
+    {
+        InstallScope chosen = ChosenScope();
+        if (!SetupDecision.NeedsElevation(chosen, _elevated))
+        {
+            _session.Scope = chosen;
+            ShowPage(PageAfterScope());
+            return;
+        }
+
+        List<string> arguments = SetupCommandLine.ForElevation(_arguments, _text.French ? "fr" : "en");
+        Hide();
+        Task.Run(() => Elevation.Relaunch(arguments))
+            .ContinueWith(task => SafeInvoke(() => OnElevatedRunDone(task.Status == TaskStatus.RanToCompletion ? task.Result : null)));
+    }
+
+    private void OnElevatedRunDone(int? exitCode)
+    {
+        if (exitCode is int code)
+        {
+            ExitCode = code;
+            Close();
+            return;
+        }
+
+        Show();
+        MessageBox.Show(this, _text.ElevationDeclined, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+    }
+
+    // The UAC shield on a button whose action asks for administrator rights.
+    private static void SetShield(Button button, bool shield)
+    {
+        const int SetShieldMessage = 0x160C;
+        SendMessage(button.Handle, SetShieldMessage, IntPtr.Zero, shield ? (IntPtr)1 : IntPtr.Zero);
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
 
     private void Begin(SetupAction action)
     {

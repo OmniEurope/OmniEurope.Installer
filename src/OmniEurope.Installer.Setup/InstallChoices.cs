@@ -29,10 +29,10 @@ internal sealed class InstallChoices
 
     public IDictionary<string, bool> Options { get; } = new Dictionary<string, bool>(StringComparer.Ordinal);
 
-    /// <summary>The defaults of a first installation.</summary>
-    public static InstallChoices Defaults(SetupConfig config, string programFiles64)
+    /// <summary>The defaults of a first installation under <paramref name="programsFolder"/> (Program Files, or the user's Programs folder).</summary>
+    public static InstallChoices Defaults(SetupConfig config, string programsFolder)
     {
-        var choices = new InstallChoices(Path.Combine(programFiles64, Path.Combine(config.InstallDirectory)), "fr");
+        var choices = new InstallChoices(Path.Combine(programsFolder, Path.Combine(config.InstallDirectory)), "fr");
         foreach (SetupOption option in config.Options)
         {
             choices.Options[option.Property] = option.DefaultChecked;

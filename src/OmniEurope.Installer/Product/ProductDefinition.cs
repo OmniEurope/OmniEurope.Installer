@@ -15,7 +15,10 @@ public sealed record ProductDefinition
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
-        Converters = { new JsonStringEnumConverter() },
+        // A JSON null for a field that cannot be null is a load error, not a crash further on.
+        RespectNullableAnnotations = true,
+        // Names only: a number such as "root": 99 would otherwise load as an undefined value.
+        Converters = { new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false) },
     };
 
     /// <summary>Product name shown in "Installed apps".</summary>

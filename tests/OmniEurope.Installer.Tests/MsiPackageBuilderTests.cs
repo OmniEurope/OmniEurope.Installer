@@ -37,7 +37,7 @@ public sealed class MsiPackageBuilderTests : IDisposable
         Property(database, "ProductVersion").ShouldBe("1.2.3");
         Property(database, "UpgradeCode").ShouldBe("{6D1C2B6E-4F0A-4C47-9C4E-0E0F3C2D1A55}");
         Property(database, "ProductCode").ShouldBe(result.ProductCode.ToString("B").ToUpperInvariant());
-        Property(database, "ALLUSERS").ShouldBe("1");
+        Property(database, "ALLUSERS").ShouldBe("2");
         Property(database, "INSTALL_STARTUP").ShouldBe("1");
         Property(database, "REINSTALLMODE").ShouldBe("amus");
         Property(database, "ARPNOREPAIR").ShouldBe("1");
@@ -61,6 +61,10 @@ public sealed class MsiPackageBuilderTests : IDisposable
         database.Query("SELECT `Condition` FROM `Component` WHERE `Component` = ?", "Desktop").ShouldHaveSingleItem()[0].ShouldBe("WANT_DESKTOP");
         database.Query("SELECT `Value` FROM `Registry` WHERE `Registry` = ?", "Settings_0").ShouldHaveSingleItem()[0].ShouldBe("[INSTALLFOLDER]");
         database.Query("SELECT `Value` FROM `Registry` WHERE `Registry` = ?", "Settings_1").ShouldHaveSingleItem()[0].ShouldBe("#7");
+        database.Query("SELECT `Root` FROM `Registry` WHERE `Registry` = ?", "Menu_KeyPath").ShouldHaveSingleItem()[0].ShouldBe("-1");
+        database.Query("SELECT `Root` FROM `Registry` WHERE `Registry` = ?", "Settings_0").ShouldHaveSingleItem()[0].ShouldBe("-1");
+        database.Query("SELECT `Root`, `Value` FROM `Registry` WHERE `Registry` = ?", "Machine_0").ShouldHaveSingleItem().ShouldBe(["2", "##literal"], ignoreOrder: false);
+        database.Query("SELECT `Root` FROM `Registry` WHERE `Registry` = ?", "User_0").ShouldHaveSingleItem()[0].ShouldBe("1");
         database.Query("SELECT `FileKey` FROM `RemoveFile`").ShouldHaveSingleItem()[0].ShouldBe("Menu_Folder");
         database.GetSummaryProperty(7).ShouldBe("x64;1033");
         database.GetSummaryProperty(15).ShouldBe(2);
@@ -102,9 +106,55 @@ public sealed class MsiPackageBuilderTests : IDisposable
     [InlineData("256.0.0")]
     [InlineData("1.0.65536")]
     [InlineData("1.0.0-beta")]
+    [InlineData("١.٢.٣")]
     public void An_invalid_product_version_is_refused(string version)
     {
         Should.Throw<ArgumentException>(() => Build(version));
+    }
+
+    [Fact]
+    public void Shortcuts_in_the_same_start_menu_folder_share_it_and_a_folderless_one_goes_to_the_menu_root()
+    {
+        ProductDefinition definition = Definition() with
+        {
+            Shortcuts =
+            [
+                new ShortcutDefinition { Id = "Menu", Location = ShortcutLocation.ProgramMenu, Folder = "App", Name = "App", RegistryKey = @"Software\OmniEurope\App", RegistryName = "Menu" },
+                new ShortcutDefinition { Id = "Help", Location = ShortcutLocation.ProgramMenu, Folder = "App", Name = "App Help", RegistryKey = @"Software\OmniEurope\App", RegistryName = "Help" },
+                new ShortcutDefinition { Id = "Top", Location = ShortcutLocation.ProgramMenu, Name = "App Top", RegistryKey = @"Software\OmniEurope\App", RegistryName = "Top" },
+            ],
+        };
+
+        MsiBuildResult result = MsiPackageBuilder.Build(definition, new MsiBuildRequest(_source, "1.0.0", _temp.Combine("out", "menu.msi")));
+
+        using MsiDatabase database = MsiDatabase.OpenReadOnly(result.OutputPath);
+        var directories = database.Query("SELECT `Shortcut`, `Directory_` FROM `Shortcut`").ToDictionary(row => row[0]!, row => row[1]);
+        directories["Menu_Shortcut"].ShouldBe(directories["Help_Shortcut"]);
+        directories["Top_Shortcut"].ShouldBe("ProgramMenuFolder");
+        database.Query("SELECT `Directory` FROM `Directory` WHERE `Directory_Parent` = ?", "ProgramMenuFolder").ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public void An_unknown_registry_root_is_refused_rather_than_mapped_to_a_hive()
+    {
+        ProductDefinition definition = Definition() with
+        {
+            RegistryComponents = [Definition().RegistryComponents[0] with { Root = (RegistryRoot)99 }],
+        };
+
+        Should.Throw<InvalidDataException>(() => MsiPackageBuilder.Build(definition, new MsiBuildRequest(_source, "1.0.0", _temp.Combine("out", "x.msi"))))
+            .Message.ShouldContain("unknown root");
+    }
+
+    [Fact]
+    public void A_missing_or_empty_published_folder_is_refused()
+    {
+        string empty = _temp.Combine("empty");
+        Directory.CreateDirectory(empty);
+
+        Should.Throw<DirectoryNotFoundException>(() => MsiPackageBuilder.Build(Definition(), new MsiBuildRequest(_temp.Combine("missing"), "1.0.0", _temp.Combine("out", "x.msi"))));
+        Should.Throw<InvalidOperationException>(() => MsiPackageBuilder.Build(Definition(), new MsiBuildRequest(empty, "1.0.0", _temp.Combine("out", "y.msi"))))
+            .Message.ShouldContain("No file to install");
     }
 
     [Fact]
@@ -147,13 +197,27 @@ public sealed class MsiPackageBuilderTests : IDisposable
             new RegistryComponentDefinition
             {
                 Id = "Settings",
-                Root = RegistryRoot.CurrentUser,
+                Root = RegistryRoot.Installation,
                 Key = @"Software\OmniEurope\App\Installer",
                 Values =
                 [
                     new RegistryValueDefinition { Name = "InstallFolder", Type = RegistryValueType.String, Value = "[INSTALLFOLDER]" },
                     new RegistryValueDefinition { Name = "Count", Type = RegistryValueType.Integer, Value = "7" },
                 ],
+            },
+            new RegistryComponentDefinition
+            {
+                Id = "Machine",
+                Root = RegistryRoot.LocalMachine,
+                Key = @"Software\OmniEurope\App\Machine",
+                Values = [new RegistryValueDefinition { Name = "Tag", Type = RegistryValueType.String, Value = "#literal" }],
+            },
+            new RegistryComponentDefinition
+            {
+                Id = "User",
+                Root = RegistryRoot.CurrentUser,
+                Key = @"Software\OmniEurope\App\User",
+                Values = [new RegistryValueDefinition { Type = RegistryValueType.String, Value = "on" }],
             },
         ],
     };

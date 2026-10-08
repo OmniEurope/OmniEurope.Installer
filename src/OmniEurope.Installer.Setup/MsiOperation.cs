@@ -26,10 +26,12 @@ internal sealed class MsiOperation
     /// <summary>Raised with each step name and each error or warning text.</summary>
     public event Action<string>? Message;
 
-    public uint Install(string msiPath, string properties) => Run(() => MsiApi.MsiInstallProduct(msiPath, MsiCommandLines.Install(properties)));
+    public uint Install(string msiPath, string properties, InstallScope scope) =>
+        Run(() => MsiApi.MsiInstallProduct(msiPath, MsiCommandLines.Install(properties, scope)));
 
-    /// <summary>Reinstalls every file of the very product the MSI describes.</summary>
-    public uint Repair(string msiPath) => Run(() => MsiApi.MsiInstallProduct(msiPath, MsiCommandLines.Repair()));
+    /// <summary>Reinstalls every file of the very product the MSI describes, with the chosen properties.</summary>
+    public uint Repair(string msiPath, string properties, InstallScope scope) =>
+        Run(() => MsiApi.MsiInstallProduct(msiPath, MsiCommandLines.Repair(properties, scope)));
 
     public uint Uninstall(string productCode) =>
         Run(() => MsiApi.MsiConfigureProductEx(productCode, MsiApi.InstallLevelDefault, MsiApi.InstallStateAbsent, MsiCommandLines.Uninstall()));

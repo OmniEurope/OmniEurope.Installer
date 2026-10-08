@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using OmniEurope.Installer.Setup;
 using Shouldly;
 
@@ -27,6 +28,25 @@ public sealed class SetupHostLogicTests
     public void The_mode_follows_the_installed_product(string? installedCode, string? installedVersion, string code, string version, string expected)
     {
         SetupDecision.Decide(installedCode, installedVersion, code, version).ToString().ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData("Downgrade", false, false)]
+    [InlineData("Downgrade", true, true)]
+    [InlineData("Repair", false, true)]
+    [InlineData("Upgrade", true, true)]
+    public void A_newer_installed_version_can_only_be_uninstalled(string mode, bool uninstall, bool expected)
+    {
+        SetupDecision.CanProceed(Enum.Parse<SetupMode>(mode), uninstall).ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData("Acme/App", "Acme_App")]
+    [InlineData(@"Acme\App: ""Pro""", "Acme_App_ _Pro_")]
+    [InlineData("Sample App", "Sample App")]
+    public void A_display_name_becomes_a_file_name_without_separators(string name, string expected)
+    {
+        SetupFileNames.Safe(name).ShouldBe(expected);
     }
 
     [Fact]
@@ -102,10 +122,69 @@ public sealed class SetupHostLogicTests
         line.Properties["INSTALLFOLDER"].ShouldBe(@"D:\A B");
     }
 
+    [Fact]
+    public void The_command_line_reads_the_context_and_the_language()
+    {
+        SetupCommandLine line = SetupCommandLine.Parse(["/PerUser", "/lang", "EN"]);
+
+        line.Scope.ShouldBe(InstallScope.PerUser);
+        line.Language.ShouldBe("en");
+        SetupCommandLine.Parse(["/permachine"]).Scope.ShouldBe(InstallScope.PerMachine);
+        SetupCommandLine.Parse([]).Scope.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("PerMachine", "PerUser", true, "PerMachine")]
+    [InlineData("PerUser", null, true, "PerUser")]
+    [InlineData(null, "PerUser", true, "PerUser")]
+    [InlineData(null, null, true, "PerMachine")]
+    [InlineData(null, null, false, null)]
+    public void An_installed_product_keeps_its_context_and_a_quiet_first_install_is_per_machine(string? installed, string? requested, bool quiet, string? expected)
+    {
+        SetupDecision.Scope(Parse(installed), Parse(requested), quiet).ShouldBe(Parse(expected));
+
+        static InstallScope? Parse(string? scope) => scope is null ? null : Enum.Parse<InstallScope>(scope);
+    }
+
+    [Theory]
+    [InlineData("PerMachine", false, true)]
+    [InlineData("PerMachine", true, false)]
+    [InlineData("PerUser", false, false)]
+    public void Only_a_per_machine_operation_needs_administrator_rights(string scope, bool elevated, bool expected)
+    {
+        SetupDecision.NeedsElevation(Enum.Parse<InstallScope>(scope), elevated).ShouldBe(expected);
+    }
+
+    [Fact]
+    public void The_elevated_run_is_per_machine_and_keeps_every_other_argument()
+    {
+        List<string> arguments = SetupCommandLine.ForElevation(["/peruser", "/lang", "fr", "/log", @"C:\a b\s.log", "INSTALL_STARTUP="], "en");
+
+        arguments.ShouldBe(["/log", @"C:\a b\s.log", "INSTALL_STARTUP=", "/permachine", "/lang", "en"]);
+        SetupCommandLine elevated = SetupCommandLine.Parse(arguments);
+        elevated.Scope.ShouldBe(InstallScope.PerMachine);
+        elevated.Language.ShouldBe("en");
+    }
+
+    [Fact]
+    public void Formatted_arguments_split_back_into_the_same_arguments()
+    {
+        string[] arguments = ["/quiet", @"C:\a b\s.log", "INSTALLFOLDER=C:\\Program Files\\App\\", "SAY=\"hi\"", string.Empty, @"\\server\share"];
+
+        CommandLineToArguments(SetupCommandLine.Format(arguments)).ShouldBe(arguments);
+    }
+
+    [Fact]
+    public void Only_French_and_English_are_languages()
+    {
+        Should.Throw<ArgumentException>(() => SetupCommandLine.Parse(["/lang", "de"]));
+    }
+
     [Theory]
     [InlineData("/unknown")]
     [InlineData("lowercase=1")]
     [InlineData("/log")]
+    [InlineData("/lang")]
     public void An_unknown_or_incomplete_argument_is_refused(string argument)
     {
         Should.Throw<ArgumentException>(() => SetupCommandLine.Parse([argument]));
@@ -129,4 +208,31 @@ public sealed class SetupHostLogicTests
         ProgressAnimation.Step(40, 40).ShouldBe(40);
         ProgressAnimation.Step(50, 40).ShouldBe(50);
     }
+
+    // Windows' own parser: what a started program receives from a command line.
+    private static string[] CommandLineToArguments(string commandLine)
+    {
+        // The program name comes first, as in a full command line.
+        IntPtr argv = CommandLineToArgvW("setup.exe " + commandLine, out int count);
+        try
+        {
+            var arguments = new string[count - 1];
+            for (int index = 1; index < count; index++)
+            {
+                arguments[index - 1] = Marshal.PtrToStringUni(Marshal.ReadIntPtr(argv, index * IntPtr.Size))!;
+            }
+
+            return arguments;
+        }
+        finally
+        {
+            LocalFree(argv);
+        }
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr CommandLineToArgvW(string commandLine, out int count);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr LocalFree(IntPtr memory);
 }

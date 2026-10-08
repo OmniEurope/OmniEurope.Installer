@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using OmniEurope.Installer.Tests;
 using Shouldly;
 
 namespace OmniEurope.Installer.IntegrationTests;
@@ -128,6 +129,70 @@ public sealed class SetupScenarioTests : IClassFixture<FixtureProduct>, IDisposa
         {
             Stop(holding);
             File.Delete(held);
+        }
+    }
+
+    [Fact]
+    public void A_per_user_install_lands_in_the_user_profile_and_its_uninstall_leaves_nothing()
+    {
+        _fixture.Run(_fixture.SetupV1, "/peruser").ExitCode.ShouldBe(Success);
+
+        var entry = FixtureProduct.Entries().ShouldHaveSingleItem();
+        entry.PerUser.ShouldBeTrue();
+        File.ReadAllText(Path.Combine(FixtureProduct.UserInstallFolder, FixtureProduct.DataFile)).ShouldBe("version 1.0.0");
+        Directory.Exists(FixtureProduct.InstallFolder).ShouldBeFalse("a per-user install writes nothing under Program Files");
+        File.Exists(FixtureProduct.UserStartMenuShortcut).ShouldBeTrue();
+        File.Exists(FixtureProduct.StartMenuShortcut).ShouldBeFalse();
+        FixtureProduct.RecordedInstallFolder(perUser: true).ShouldNotBeNullOrEmpty();
+        FixtureProduct.RecordedInstallFolder().ShouldBeNull();
+
+        _fixture.Run(_fixture.SetupV1, "/uninstall").ExitCode.ShouldBe(Success);
+
+        FixtureProduct.Entries().ShouldBeEmpty();
+        Directory.Exists(FixtureProduct.UserInstallFolder).ShouldBeFalse();
+        File.Exists(FixtureProduct.UserStartMenuShortcut).ShouldBeFalse();
+        Directory.Exists(Path.GetDirectoryName(FixtureProduct.UserStartMenuShortcut)).ShouldBeFalse("the Start menu folder created by the install");
+        FixtureProduct.RecordedInstallFolder(perUser: true).ShouldBeNull();
+    }
+
+    [Fact]
+    public void An_update_keeps_the_context_of_the_installed_product()
+    {
+        _fixture.Run(_fixture.SetupV1, "/peruser").ExitCode.ShouldBe(Success);
+
+        // No /peruser: a quiet first install would be per machine, but the installed product's context wins.
+        _fixture.Run(_fixture.SetupV2).ExitCode.ShouldBe(Success);
+
+        var updated = FixtureProduct.Entries().ShouldHaveSingleItem();
+        updated.Version.ShouldBe("2.0.0");
+        updated.PerUser.ShouldBeTrue();
+        File.ReadAllText(Path.Combine(FixtureProduct.UserInstallFolder, FixtureProduct.DataFile)).ShouldBe("version 2.0.0");
+        Directory.Exists(FixtureProduct.InstallFolder).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void The_msi_alone_installs_per_machine_as_a_group_policy_assignment_does()
+    {
+        string log = Path.Combine(Path.GetTempPath(), $"oe-fixture-msi-{Guid.NewGuid():N}.log");
+        try
+        {
+            (int exitCode, _) = ProcessRunner.Run("msiexec.exe", "/i", _fixture.MsiV1, "/qn", "REBOOT=ReallySuppress", "/l*v", log);
+
+            exitCode.ShouldBe(Success);
+            FixtureProduct.Entries().ShouldHaveSingleItem().PerUser.ShouldBeFalse();
+            File.Exists(Path.Combine(FixtureProduct.InstallFolder, FixtureProduct.MainExecutable)).ShouldBeTrue();
+            File.Exists(FixtureProduct.StartMenuShortcut).ShouldBeTrue();
+            FixtureProduct.RecordedInstallFolder().ShouldNotBeNullOrEmpty();
+
+            // The setup then finds that per-machine installation and updates it in place.
+            _fixture.Run(_fixture.SetupV2).ExitCode.ShouldBe(Success);
+            var updated = FixtureProduct.Entries().ShouldHaveSingleItem();
+            updated.Version.ShouldBe("2.0.0");
+            updated.PerUser.ShouldBeFalse();
+        }
+        finally
+        {
+            File.Delete(log);
         }
     }
 

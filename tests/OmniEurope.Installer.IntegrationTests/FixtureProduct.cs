@@ -12,8 +12,9 @@ namespace OmniEurope.Installer.IntegrationTests;
 
 /// <summary>
 /// A throwaway product with its own UpgradeCode, folder, Start menu entry and settings key,
-/// built in versions 1.0.0 and 2.0.0 as real setup executables. The scenarios install it machine-wide,
-/// so they run only elevated and on request (CI, or a disposable machine), and fail otherwise.
+/// built in versions 1.0.0 and 2.0.0 as real setup executables. The scenarios install it machine-wide
+/// or for the current user, so they run only elevated and on request (CI, or a disposable machine),
+/// and fail otherwise.
 /// </summary>
 public sealed class FixtureProduct : IDisposable
 {
@@ -53,8 +54,8 @@ public sealed class FixtureProduct : IDisposable
         }
 
         RemoveLeftovers();
-        SetupV1 = BuildSetup("1.0.0");
-        SetupV2 = BuildSetup("2.0.0");
+        (MsiV1, SetupV1) = BuildSetup("1.0.0");
+        (_, SetupV2) = BuildSetup("2.0.0");
     }
 
     public string HostExecutable { get; }
@@ -63,26 +64,39 @@ public sealed class FixtureProduct : IDisposable
 
     public string SetupV2 { get; }
 
+    /// <summary>The MSI of version 1.0.0 alone, as a Group Policy assignment deploys it.</summary>
+    public string MsiV1 { get; }
+
     public static string InstallFolder =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "OmniEurope.Tests", "Fixture");
 
     public static string StartMenuShortcut =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), Name, $"{Name}.lnk");
 
-    /// <summary>The "Installed apps" entries of the fixture, as (ProductCode, DisplayVersion).</summary>
-    public static IReadOnlyList<(string ProductCode, string Version)> Entries()
+    /// <summary>Where Windows Installer puts a per-user installation of the fixture: the user's Programs folder.</summary>
+    public static string UserInstallFolder =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "OmniEurope.Tests", "Fixture");
+
+    public static string UserStartMenuShortcut =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), Name, $"{Name}.lnk");
+
+    /// <summary>The "Installed apps" entries of the fixture, per machine and for the current user, as (ProductCode, DisplayVersion, PerUser).</summary>
+    public static IReadOnlyList<(string ProductCode, string Version, bool PerUser)> Entries()
     {
-        var entries = new List<(string, string)>();
-        foreach (RegistryView view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
+        var entries = new List<(string, string, bool)>();
+        foreach ((RegistryHive hive, RegistryView view) in new[]
         {
-            using RegistryKey root = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view);
+            (RegistryHive.LocalMachine, RegistryView.Registry64), (RegistryHive.LocalMachine, RegistryView.Registry32), (RegistryHive.CurrentUser, RegistryView.Default),
+        })
+        {
+            using RegistryKey root = RegistryKey.OpenBaseKey(hive, view);
             using RegistryKey? uninstall = root.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall");
             foreach (string name in uninstall?.GetSubKeyNames() ?? [])
             {
                 using RegistryKey? entry = uninstall!.OpenSubKey(name);
                 if (entry?.GetValue("DisplayName") as string == Name)
                 {
-                    entries.Add((name, entry.GetValue("DisplayVersion") as string ?? string.Empty));
+                    entries.Add((name, entry.GetValue("DisplayVersion") as string ?? string.Empty, hive == RegistryHive.CurrentUser));
                 }
             }
         }
@@ -90,9 +104,13 @@ public sealed class FixtureProduct : IDisposable
         return entries;
     }
 
-    public static string? RecordedInstallFolder()
+    /// <summary>The install folder recorded by the MSI in the installation's hive: HKCU per user, HKLM per machine.</summary>
+    public static string? RecordedInstallFolder(bool perUser = false)
     {
-        using RegistryKey? settings = Registry.CurrentUser.OpenSubKey(SettingsKey);
+        using RegistryKey root = perUser
+            ? RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default)
+            : RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+        using RegistryKey? settings = root.OpenSubKey(SettingsKey);
         return settings?.GetValue("InstallFolder") as string;
     }
 
@@ -134,7 +152,7 @@ public sealed class FixtureProduct : IDisposable
 
     private static string FixtureAppSource => Path.Combine(Environment.SystemDirectory, "cmd.exe");
 
-    private string BuildSetup(string version)
+    private (string Msi, string Setup) BuildSetup(string version)
     {
         // The application is a renamed copy of cmd.exe: it can run, hold its own image and be closed.
         string source = _temp.Combine($"publish-{version}");
@@ -166,7 +184,7 @@ public sealed class FixtureProduct : IDisposable
                 new RegistryComponentDefinition
                 {
                     Id = "InstallerSettings",
-                    Root = RegistryRoot.CurrentUser,
+                    Root = RegistryRoot.Installation,
                     Key = SettingsKey,
                     Values = [new RegistryValueDefinition { Name = "InstallFolder", Type = RegistryValueType.String, Value = "[INSTALLFOLDER]" }],
                 },
@@ -177,13 +195,13 @@ public sealed class FixtureProduct : IDisposable
         string setup = _temp.Combine($"fixture-{version}-Setup.exe");
         string icon = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
         SetupPackageBuilder.Build(definition, new SetupBuildRequest(HostExecutable, msi.OutputPath, null, icon, setup));
-        return setup;
+        return (msi.OutputPath, setup);
     }
 
     // A previous run that stopped half-way must not leave the fixture installed for the next scenario.
     private void RemoveLeftovers()
     {
-        string folder = InstallFolder + Path.DirectorySeparatorChar;
+        string[] folders = [InstallFolder + Path.DirectorySeparatorChar, UserInstallFolder + Path.DirectorySeparatorChar];
         foreach (Process process in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(MainExecutable)))
         {
             using (process)
@@ -200,7 +218,7 @@ public sealed class FixtureProduct : IDisposable
                     continue;
                 }
 
-                if (path is not null && path.StartsWith(folder, StringComparison.OrdinalIgnoreCase) && !process.HasExited)
+                if (path is not null && folders.Any(folder => path.StartsWith(folder, StringComparison.OrdinalIgnoreCase)) && !process.HasExited)
                 {
                     process.Kill();
                     process.WaitForExit();
@@ -208,7 +226,7 @@ public sealed class FixtureProduct : IDisposable
             }
         }
 
-        foreach ((string productCode, _) in Entries())
+        foreach ((string productCode, _, _) in Entries())
         {
             ProcessRunner.Run("msiexec.exe", "/x", productCode, "/qn", "REBOOT=ReallySuppress");
         }

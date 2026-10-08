@@ -19,6 +19,14 @@ public sealed class MsiNamesTests
         value.ShouldMatch(@"^[0-9a-f]{8}\.dll\|Microsoft\.AspNetCore\.Components\.dll$");
     }
 
+    [Theory]
+    [InlineData("LICENSEFILE", @"^[0-9a-f]{8}\|LICENSEFILE$")]
+    [InlineData("styles.bundle.json", @"^[0-9a-f]{8}\.jso\|styles\.bundle\.json$")]
+    public void A_short_name_keeps_at_most_three_extension_characters_and_none_when_there_is_no_extension(string longName, string pattern)
+    {
+        MsiNames.FileName(longName, new HashSet<string>()).ShouldMatch(pattern);
+    }
+
     [Fact]
     public void Short_names_stay_unique_within_a_folder()
     {

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using OmniEurope.Installer.Cabinet;
 using OmniEurope.Installer.Msi;
@@ -153,15 +154,16 @@ public static partial class MsiPackageBuilder
     {
         Match match = VersionPattern().Match(version);
         bool valid = match.Success
-            && int.Parse(match.Groups[1].Value) <= 255
-            && int.Parse(match.Groups[2].Value) <= 255
-            && int.Parse(match.Groups[3].Value) <= 65535;
+            && int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) <= 255
+            && int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture) <= 255
+            && int.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture) <= 65535;
         if (!valid)
         {
             throw new ArgumentException($"'{version}' is not a product version: expected major.minor.build with major and minor up to 255 and build up to 65535.", nameof(version));
         }
     }
 
-    [GeneratedRegex(@"^(\d{1,3})\.(\d{1,3})\.(\d{1,5})$")]
+    // [0-9], not \d: \d also matches other scripts' digits, which int.Parse rejects.
+    [GeneratedRegex(@"^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,5})$")]
     private static partial Regex VersionPattern();
 }

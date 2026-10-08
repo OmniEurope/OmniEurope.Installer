@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
 
@@ -116,8 +117,16 @@ public sealed class SetupPayload
     private static SetupConfig Deserialize(byte[] json)
     {
         using var buffer = new MemoryStream(json);
-        return (SetupConfig?)new DataContractJsonSerializer(typeof(SetupConfig)).ReadObject(buffer)
-            ?? throw new InvalidDataException("The setup configuration is empty.");
+        try
+        {
+            return (SetupConfig?)new DataContractJsonSerializer(typeof(SetupConfig)).ReadObject(buffer)
+                ?? throw new InvalidDataException("The setup configuration is empty.");
+        }
+        catch (SerializationException exception)
+        {
+            // A damaged configuration reads as a damaged setup file: the host turns that into 1603.
+            throw new InvalidDataException("The setup configuration is damaged.", exception);
+        }
     }
 
     private static long CopyFile(string path, Stream output)

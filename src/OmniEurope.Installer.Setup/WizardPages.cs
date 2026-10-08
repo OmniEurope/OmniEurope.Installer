@@ -35,6 +35,7 @@ internal sealed class WizardPages
         _config = config;
         _licensePath = licensePath;
         BuildLanguage(Page(content, WizardPage.Language));
+        BuildScope(Page(content, WizardPage.Scope));
         BuildLicense(Page(content, WizardPage.License));
         BuildDirectory(Page(content, WizardPage.Directory));
         BuildProgress(Page(content, WizardPage.Progress));
@@ -43,6 +44,8 @@ internal sealed class WizardPages
     }
 
     public ComboBox LanguageBox { get; private set; } = null!;
+    public RadioButton ForMeChoice { get; private set; } = null!;
+    public RadioButton ForAllChoice { get; private set; } = null!;
     public RichTextBox LicenseBox { get; private set; } = null!;
     public CheckBox AcceptBox { get; private set; } = null!;
     public TextBox FolderBox { get; private set; } = null!;
@@ -84,6 +87,8 @@ internal sealed class WizardPages
         LaunchBox.Text = text.Launch;
         LogLink.Text = text.ViewLog;
         UninstallChoice.Text = text.Uninstall;
+        ForMeChoice.Text = text.ForMe;
+        ForAllChoice.Text = text.ForAll;
         foreach ((SetupOption option, CheckBox box) in OptionBoxes)
         {
             box.Text = text.French ? option.LabelFr : option.LabelEn;
@@ -109,6 +114,18 @@ internal sealed class WizardPages
         LanguageBox.Items.AddRange(new object[] { "Français", "English" });
         LanguageBox.SelectedIndex = 0;
         page.Controls.Add(LanguageBox);
+    }
+
+    private void BuildScope(Panel page)
+    {
+        AddHeader(page, text => text.ScopeHeader);
+        AddDescription(page, text => text.ScopeInfo, 68);
+        ForMeChoice = new RadioButton { Font = InputFont, Location = new Point(24, 120), AutoSize = true, Checked = true };
+        page.Controls.Add(ForMeChoice);
+        AddLabel(page, text => text.ForMeInfo, 148, BodyFont, HintColor, left: 44);
+        ForAllChoice = new RadioButton { Font = InputFont, Location = new Point(24, 190), AutoSize = true };
+        page.Controls.Add(ForAllChoice);
+        AddLabel(page, text => text.ForAllInfo, 218, BodyFont, HintColor, left: 44);
     }
 
     private void BuildLicense(Panel page)

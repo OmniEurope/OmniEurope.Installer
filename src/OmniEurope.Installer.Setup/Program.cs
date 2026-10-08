@@ -39,6 +39,19 @@ internal static class Program
                 return 0;
             }
 
+            session.Scope = SetupDecision.Scope(session.Installed?.Scope, commandLine.Scope, commandLine.Quiet);
+            if (commandLine.Quiet && QuietRefusal(session, commandLine) is int refusal)
+            {
+                return refusal;
+            }
+
+            // The setup starts without administrator rights; a per-machine operation runs again with them (UAC), the
+            // wizard's own choice included (see WizardForm). Declining the prompt cancels.
+            if (session.Scope is InstallScope scope && SetupDecision.NeedsElevation(scope, Elevation.IsElevated()))
+            {
+                return Elevation.Relaunch(SetupCommandLine.ForElevation(args, commandLine.Language)) ?? (int)MsiApi.UserExit;
+            }
+
             if (commandLine.Quiet)
             {
                 return RunQuiet(session, commandLine);
@@ -46,7 +59,7 @@ internal static class Program
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            using var form = new WizardForm(session, commandLine);
+            using var form = new WizardForm(session, commandLine, args);
             Application.Run(form);
             return form.ExitCode;
         }
@@ -67,19 +80,19 @@ internal static class Program
     /// <summary>No window: install, update, repair or (with /uninstall) remove, with the recorded or default choices.</summary>
     private static int RunQuiet(SetupSession session, SetupCommandLine commandLine)
     {
+        InstallChoices choices = session.InitialChoices(session.Scope!.Value);
         if (commandLine.Uninstall)
         {
-            return session.Installed is null
-                ? UnknownProduct
-                : (int)session.Run(SetupAction.Uninstall, session.InitialChoices(), commandLine.Properties);
-        }
-
-        if (session.Mode == SetupMode.Downgrade)
-        {
-            return AnotherVersionInstalled;
+            return (int)session.Run(SetupAction.Uninstall, choices, commandLine.Properties);
         }
 
         SetupAction action = session.Mode == SetupMode.Repair ? SetupAction.Repair : SetupAction.Install;
-        return (int)session.Run(action, session.InitialChoices(), commandLine.Properties);
+        return (int)session.Run(action, choices, commandLine.Properties);
     }
+
+    /// <summary>A quiet run with nothing to do: answered before asking for administrator rights.</summary>
+    private static int? QuietRefusal(SetupSession session, SetupCommandLine commandLine) =>
+        commandLine.Uninstall && session.Installed is null ? UnknownProduct
+        : !commandLine.Uninstall && session.Mode == SetupMode.Downgrade ? AnotherVersionInstalled
+        : null;
 }

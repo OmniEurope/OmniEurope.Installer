@@ -29,7 +29,7 @@ public sealed class SetupPackageBuilderTests : IDisposable
         payload.Config.ProductVersion.ShouldBe("2.1.0");
         payload.Config.UpgradeCode.ShouldBe("{6D1C2B6E-4F0A-4C47-9C4E-0E0F3C2D1A55}");
         payload.Config.MainComponentId.ShouldBe(MsiNames.StableGuid(definition.UpgradeCode, "file:Sample.exe"));
-        payload.Config.Options.Single().DefaultChecked.ShouldBeTrue();
+        payload.Config.Options.Select(option => option.DefaultChecked).ShouldBe([true, false]);
         payload.Config.LegacyBundleUpgradeCodes.ShouldBe(["{C4D19E62-7B3A-4E85-A0F7-2B6D8C1E5A93}"]);
         string extracted = _temp.Combine("extracted.msi");
         SetupPayload.Extract(input, payload.MsiOffset, payload.MsiLength, extracted);
@@ -72,6 +72,71 @@ public sealed class SetupPackageBuilderTests : IDisposable
         Should.Throw<InvalidDataException>(() => SetupPayload.Read(input));
     }
 
+    [Fact]
+    public void A_damaged_configuration_reads_as_a_damaged_setup()
+    {
+        // A valid trailer around a truncated configuration: the host must see the InvalidDataException it maps to 1603.
+        byte[] config = System.Text.Encoding.UTF8.GetBytes("{\"ProductName\":\"App\",\"Opti");
+        using var input = new MemoryStream();
+        input.Write(config);
+        input.WriteByte(0x4D);
+        var writer = new BinaryWriter(input);
+        writer.Write((long)config.Length);
+        writer.Write(1L);
+        writer.Write(0L);
+        writer.Write("OESETUP1"u8.ToArray());
+        writer.Flush();
+
+        Should.Throw<InvalidDataException>(() => SetupPayload.Read(input)).Message.ShouldContain("damaged");
+    }
+
+    [Fact]
+    public void An_icon_source_without_icon_or_resources_and_a_missing_target_are_refused()
+    {
+        string text = _temp.WriteFile("notes.txt", "not an executable"u8.ToArray());
+        string withoutIcon = Path.Combine(Environment.SystemDirectory, "kernel32.dll");
+
+        Should.Throw<InvalidOperationException>(() => IconResources.ReadFirstGroup(text)).Message.ShouldContain("Cannot read the resources");
+        Should.Throw<InvalidOperationException>(() => IconResources.ReadFirstGroup(withoutIcon)).Message.ShouldContain("has no icon");
+        Should.Throw<InvalidOperationException>(() => IconResources.Copy(IconSource, _temp.Combine("missing.exe"))).Message.ShouldContain("Cannot open");
+    }
+
+    [Fact]
+    public void A_definition_without_a_setup_section_is_refused()
+    {
+        (ProductDefinition definition, string msi) = BuildMsi();
+
+        Should.Throw<InvalidDataException>(() => SetupPackageBuilder.Build(definition with { Setup = null }, new SetupBuildRequest(HostStandIn, msi, null, IconSource, _temp.Combine("x.exe"))))
+            .Message.ShouldContain("no 'setup' section");
+    }
+
+    [Fact]
+    public void A_file_shorter_than_the_trailer_or_an_empty_configuration_is_refused()
+    {
+        using var tiny = new MemoryStream(new byte[10]);
+        Should.Throw<InvalidDataException>(() => SetupPayload.Read(tiny));
+
+        byte[] config = "null"u8.ToArray();
+        using var input = new MemoryStream();
+        input.Write(config);
+        input.WriteByte(0x4D);
+        var writer = new BinaryWriter(input);
+        writer.Write((long)config.Length);
+        writer.Write(1L);
+        writer.Write(0L);
+        writer.Write("OESETUP1"u8.ToArray());
+        writer.Flush();
+        Should.Throw<InvalidDataException>(() => SetupPayload.Read(input)).Message.ShouldContain("empty");
+    }
+
+    [Fact]
+    public void A_truncated_part_is_not_extracted_half_way_silently()
+    {
+        using var input = new MemoryStream(new byte[5]);
+
+        Should.Throw<EndOfStreamException>(() => SetupPayload.Extract(input, 0, 10, _temp.Combine("part.bin")));
+    }
+
     private (ProductDefinition Definition, string Msi) BuildMsi()
     {
         string source = _temp.Combine("publish");
@@ -85,11 +150,15 @@ public sealed class SetupPackageBuilderTests : IDisposable
             MainExecutable = "Sample.exe",
             InstallDirectory = ["OmniEurope", "App"],
             DowngradeErrorMessage = "Newer.",
-            Properties = new Dictionary<string, string> { ["INSTALL_STARTUP"] = "1" },
+            Properties = new Dictionary<string, string> { ["INSTALL_STARTUP"] = "1", ["INSTALL_DESKTOP_SHORTCUT"] = string.Empty },
             Setup = new SetupDefinition
             {
                 SettingsKey = @"Software\OmniEurope\App\Installer",
-                Options = [new SetupOptionDefinition { Property = "INSTALL_STARTUP", SettingName = "Startup", LabelFr = "Démarrer", LabelEn = "Start" }],
+                Options =
+                [
+                    new SetupOptionDefinition { Property = "INSTALL_STARTUP", SettingName = "Startup", LabelFr = "Démarrer", LabelEn = "Start" },
+                    new SetupOptionDefinition { Property = "INSTALL_DESKTOP_SHORTCUT", SettingName = "DesktopShortcut", LabelFr = "Bureau", LabelEn = "Desktop" },
+                ],
                 LegacyBundleUpgradeCodes = [Guid.Parse("C4D19E62-7B3A-4E85-A0F7-2B6D8C1E5A93")],
             },
         };

@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 # PLAN-001: Initial scope
 
-> Status: **in progress** (2026-10-07). Lots 1 to 3 done: MSI generator, major upgrade, setup executable (covered
+> Status: **in progress** (2026-10-08). Lots 1 to 3 done: MSI generator, major upgrade, setup executable (covered
 > by unit tests and by integration tests run in CI). Lot 4: a first application builds its installer with this
 > tool; its upgrade check with its own build and a Group Policy test remain. Remaining: automatic updates (lot 5,
-> needs a publication place), adoption by the other applications (lot 6), code signing with a payload reader that
-> skips the certificate table (lot 7), a complete interactive run of the wizard, ICE validation, and the NuGet
-> packaging of `oe-installer` once a pipeline builds installers.
+> needs a publication place), adoption by the other applications (lot 6), a complete interactive run of the wizard,
+> ICE validation, and the NuGet packaging of `oe-installer` once a pipeline builds installers. Code signing (lot 7)
+> is deferred.
 
 ## Objective
 
@@ -30,8 +30,22 @@ updater close it before installing.
 - 2026-10-07: an application uses this repository in two steps. First from a sibling checkout, the tool built on
   demand (local machine only); then, once a pipeline must build the installer, through the `oe-installer` .NET tool
   published as a versioned NuGet package (setup host included) and pinned by the application.
-- Open: the setup settings and the startup `Run` value are written under HKCU, that is for the account that runs
-  the elevated setup; keeping HKCU or moving to HKLM is still to be decided.
+- 2026-10-08: HKLM for what the per-machine package records about itself. HKCU is the hive of whichever account runs
+  the elevated setup: an administrator elevating for a standard user, a Group Policy deployment or the updater service
+  (system account) would record the choices for the wrong account, or where the updater cannot read them. The
+  shortcuts' key path values are written under HKLM; the component that records `setup.settingsKey` must use
+  `LocalMachine` (refused otherwise); the setup reads the recorded choices under HKLM, then under HKCU so that an
+  installation that recorded them per user keeps its choices. Superseded by PLAN-002 (per-user or per-machine
+  installation): the settings and key paths then use the installation's own hive.
+- 2026-10-08: the startup `Run` value stays a product choice. An application that manages its own startup setting
+  under HKCU (without administrator rights) keeps the installer's `Run` value under HKCU too: under HKLM, the
+  application could not turn it off and could start twice.
+- 2026-10-08: `setup.legacyBundleUpgradeCodes` keeps its name and stays: it names the `BundleUpgradeCode` registry
+  value it looks up, and the other applications' former setups (lot 6) leave such an entry too.
+- 2026-10-08: `RemoveExistingProducts` stays right after `InstallValidate`: the previous version is removed before
+  the new one is installed, so a failed upgrade leaves it removed. Moving it after `InstallInitialize` would roll the
+  previous version back on failure, but the old and new components would then coexist in one transaction, which
+  requires the component rules to hold strictly between versions (same GUID, same key path and content).
 
 ## Lot 1: MSI generator
 
@@ -103,6 +117,8 @@ updater close it before installing.
 - [ ] Windows service (system account) reading a published manifest (version, URL, SHA-256, size) signed with ECDSA
   P-256 by the publisher's private key, checking the signature with the embedded public key, downloading the MSI,
   checking its hash, closing the application and installing with `msiexec /qn`.
+- [ ] A per-user installation (PLAN-002) is updated without administrator rights, by a task running as the user
+  rather than by the service.
 - Check: an application moves from one version to the next without intervention; a badly signed manifest, an altered
   MSI or a lower version are refused and logged.
 
@@ -111,7 +127,9 @@ updater close it before installing.
 - [ ] Same adoption as lot 4 for the other desktop applications.
 - Check: for each, the checks of lot 4.
 
-## Lot 7: Code signing (optional)
+## Lot 7: Code signing (deferred)
+
+Deferred on 2026-10-08: not needed for now, kept here for when a certificate is wanted.
 
 - [ ] Authenticode certificate (owner's decision and purchase), signing of the MSI and the setup executable.
 - [ ] The setup payload reader skips the Authenticode certificate table appended after the payload trailer

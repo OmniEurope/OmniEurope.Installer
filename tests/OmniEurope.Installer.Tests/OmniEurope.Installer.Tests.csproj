@@ -28,6 +28,8 @@
     <Compile Include="..\..\src\OmniEurope.Installer.Setup\ProgressAnimation.cs" Link="SetupHost\ProgressAnimation.cs" />
     <Compile Include="..\..\src\OmniEurope.Installer.Setup\LegacyBundles.cs" Link="SetupHost\LegacyBundles.cs" />
     <Compile Include="..\..\src\OmniEurope.Installer.Setup\MsiCommandLines.cs" Link="SetupHost\MsiCommandLines.cs" />
+    <Compile Include="..\..\src\OmniEurope.Installer.Setup\SetupFileNames.cs" Link="SetupHost\SetupFileNames.cs" />
+    <Compile Include="..\..\src\OmniEurope.Installer.Setup\InstallScope.cs" Link="SetupHost\InstallScope.cs" />
   </ItemGroup>
 
   <ItemGroup>

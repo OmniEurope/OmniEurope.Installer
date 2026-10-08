@@ -6,12 +6,14 @@ application folder and a short JSON product description. Licensed under EUPL-1.2
 
 ## What it produces
 
-- **An MSI** for a per-machine installation under 64-bit `Program Files`: every published file, Start menu and
-  desktop shortcuts, registry values, an Add/Remove Programs entry with the product icon, and major upgrades (one
-  entry per product, an older version is refused, the same version can be reinstalled). The MSI database is written
+- **An MSI** that installs either for every user of the machine (64-bit `Program Files`, the default, also for Group
+  Policy) or for the current user only without administrator rights (`%LOCALAPPDATA%\Programs`): every published
+  file, Start menu and desktop shortcuts, registry values, an Add/Remove Programs entry with the product icon, and
+  major upgrades (one entry per product, an older version is refused, the same version can be reinstalled). The MSI
+  database is written
   through the Windows Installer API (`msi.dll`); the files are stored in a cabinet embedded in the MSI.
-- **A setup executable** that carries the MSI: a French and English wizard (language, license, install folder,
-  options, then update, repair or uninstall), closing of the running application before its files are replaced, and
+- **A setup executable** that carries the MSI: a French and English wizard (language, "for me only" or "for all
+  users", license, install folder, options, then update, repair or uninstall), closing of the running application before its files are replaced, and
   a quiet mode for scripted deployment.
 
 ## Product description
@@ -37,7 +39,7 @@ A product is described in JSON (comments allowed, unknown fields rejected):
   "registryComponents": [
     {
       // Records the choices so that the next setup run (update, repair) starts from them.
-      "id": "InstallerSettings", "root": "CurrentUser", "key": "Software\\OmniEurope\\SampleApp\\Installer",
+      "id": "InstallerSettings", "root": "Installation", "key": "Software\\OmniEurope\\SampleApp\\Installer",
       "values": [
         { "name": "InstallFolder", "type": "String", "value": "[INSTALLFOLDER]" },
         { "name": "DesktopShortcut", "type": "String", "value": "[INSTALL_DESKTOP_SHORTCUT]" }
@@ -65,9 +67,9 @@ A complete example is [tests/OmniEurope.Installer.Tests/Samples/product.json](te
 | `downgradeErrorMessage` | Shown when a newer version is already installed |
 | `properties` | Public properties and their defaults; the command line can override them |
 | `exclude` | File name patterns (`*`, `?`) left out of the published folder |
-| `shortcuts[]` | `id`, `location` (`ProgramMenu` or `Desktop`), `folder` (Start menu sub-folder), `name`, `description`, `condition`, and the HKCU `registryKey`/`registryName` that records the shortcut |
-| `registryComponents[]` | `id`, `condition`, `root` (`CurrentUser` or `LocalMachine`), `key`, `values[]` of `name` (omitted for the default value), `type` (`String` or `Integer`) and `value` (may reference properties such as `[INSTALLFOLDER]`) |
-| `setup.settingsKey` | HKCU key read to prefill the wizard: `InstallFolder`, `Language` and each option's `settingName`, as written by a registry component |
+| `shortcuts[]` | `id`, `location` (`ProgramMenu` or `Desktop`), `folder` (Start menu sub-folder), `name`, `description`, `condition`, and the `registryKey`/`registryName` that records the shortcut (in the installation's hive) |
+| `registryComponents[]` | `id`, `condition`, `root` (`Installation`: HKCU for a per-user installation and HKLM for a per-machine one, required for the component that records `setup.settingsKey`; or a fixed `CurrentUser` or `LocalMachine`), `key`, `values[]` of `name` (omitted for the default value), `type` (`String` or `Integer`) and `value` (may reference properties such as `[INSTALLFOLDER]`) |
+| `setup.settingsKey` | Key read to prefill the wizard from the installed context's hive (HKLM, then HKCU for an older per-machine installation): `InstallFolder`, `Language` and each option's `settingName`, as written by a registry component |
 | `setup.languageProperty` | Public property receiving `fr` or `en`; omitted when the product has no language choice |
 | `setup.options[]` | Check boxes: `property` (`"1"` when checked, empty otherwise), `settingName`, `labelFr`, `labelEn` |
 | `setup.legacyBundleUpgradeCodes` | BundleUpgradeCodes of former setup bundles whose Installed apps entry is removed after a successful operation |
@@ -95,6 +97,7 @@ Without arguments, the setup shows its wizard. On the command line:
 |---|---|
 | `/quiet` | Installs, updates or repairs without any window, with the recorded or default choices |
 | `/quiet /uninstall` | Removes the product |
+| `/peruser`, `/permachine` | Installs for the current user only (no administrator rights) or for all users; without it, the wizard asks and `/quiet` installs for all users. An installed product keeps its context |
 | `PROPERTY=value` | Overrides a choice, e.g. `INSTALL_DESKTOP_SHORTCUT=` to leave the box unchecked |
 | `/log <path>` | Writes the log to this file (default: `%TEMP%`) |
 

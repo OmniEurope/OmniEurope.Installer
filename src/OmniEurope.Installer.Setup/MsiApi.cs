@@ -17,6 +17,11 @@ internal static class MsiApi
     public const int InstallLevelDefault = 0;
     public const int InstallStateAbsent = 2;
 
+    // MSIINSTALLCONTEXT: where an installed product lives.
+    public const int ContextUserManaged = 1;
+    public const int ContextUserUnmanaged = 2;
+    public const int ContextMachine = 4;
+
     // INSTALLLOGMODE flags: what the external handler receives, and what the log records.
     public const uint LogFatalExit = 1 << 0;
     public const uint LogError = 1 << 1;
@@ -57,8 +62,8 @@ internal static class MsiApi
     [DllImport("msi.dll", CharSet = CharSet.Unicode, EntryPoint = "MsiEnumRelatedProductsW")]
     public static extern uint MsiEnumRelatedProducts(string upgradeCode, uint reserved, uint index, StringBuilder productCode);
 
-    [DllImport("msi.dll", CharSet = CharSet.Unicode, EntryPoint = "MsiGetProductInfoW")]
-    public static extern uint MsiGetProductInfo(string productCode, string property, StringBuilder? value, ref uint length);
+    [DllImport("msi.dll", CharSet = CharSet.Unicode, EntryPoint = "MsiGetProductInfoExW")]
+    public static extern uint MsiGetProductInfoEx(string productCode, string? userSid, int context, string property, StringBuilder? value, ref uint length);
 
     [DllImport("msi.dll", CharSet = CharSet.Unicode, EntryPoint = "MsiGetComponentPathW")]
     public static extern int MsiGetComponentPath(string productCode, string componentId, StringBuilder? path, ref uint length);

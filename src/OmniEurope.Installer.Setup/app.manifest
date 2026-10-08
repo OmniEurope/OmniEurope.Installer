@@ -4,9 +4,10 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <!-- Per-machine MSI: the whole setup runs elevated, so Windows Installer never needs to prompt
-             mid-way. The product is started at the end through Explorer, without these rights. -->
-        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+        <!-- Starts without administrator rights: a per-user installation never needs them, and a per-machine
+             operation runs the setup again elevated (Elevation.Relaunch), so Windows Installer never prompts
+             mid-way. The product is started at the end through Explorer, without those rights. -->
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>

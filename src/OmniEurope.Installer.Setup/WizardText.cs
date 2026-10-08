@@ -38,6 +38,13 @@ internal sealed class WizardText
     public string Install => T("Installer", "Install");
     public string Cancel => T("Annuler", "Cancel");
     public string Close => T("Fermer", "Close");
+    public string ScopeHeader => T("Type d’installation", "Installation Type");
+    public string ScopeInfo => T("Pour qui installer {0} ?", "Who should {0} be installed for?");
+    public string ForMe => T("Pour moi seulement", "Only for me");
+    public string ForMeInfo => T("Dans votre profil, sans droits administrateur.", "In your profile, without administrator rights.");
+    public string ForAll => T("Pour tous les utilisateurs de cet ordinateur", "For all users of this computer");
+    public string ForAllInfo => T("Dans Program Files, avec des droits administrateur.", "In Program Files, with administrator rights.");
+    public string ElevationDeclined => T("L’installation pour tous les utilisateurs demande des droits administrateur. Choisissez « Pour moi seulement » ou acceptez la demande de Windows.", "Installing for all users needs administrator rights. Choose \"Only for me\" or accept the Windows prompt.");
     public string MaintenanceHeader => T("{0} est déjà installé", "{0} is already installed");
     public string MaintenanceInfo => T("Choisissez une action :", "Choose an action:");
     public string Repair => T("Réparer", "Repair");

@@ -38,7 +38,8 @@ jobs:
 
   integration:
     # GitHub's Windows runners are disposable and run as administrator: the setup executable is run for
-    # real, quietly, on a throwaway fixture product (install, update, downgrade, running app, former setup entry, file in use).
+    # real, quietly, on a throwaway fixture product (install, update, downgrade, running app, former setup entry, file in use,
+    # per-user install and update, the MSI alone as a Group Policy assignment runs it).
     runs-on: windows-2025
     timeout-minutes: 20
     env:

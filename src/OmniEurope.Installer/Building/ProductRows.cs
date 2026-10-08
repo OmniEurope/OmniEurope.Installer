@@ -21,6 +21,11 @@ internal sealed class ProductRows
     private const int UpgradeOnlyDetect = 2;
     private const int UpgradeVersionMaxInclusive = 0x200;
 
+    // Registry table roots; -1 is HKCU in a per-user installation and HKLM in a per-machine one.
+    private const int RootInstallation = -1;
+    private const int RootCurrentUser = 1;
+    private const int RootLocalMachine = 2;
+
     private readonly ProductDefinition _definition;
     private readonly string _iconName;
 
@@ -44,7 +49,9 @@ internal sealed class ProductRows
             ("ProductLanguage", "1033"),
             ("Manufacturer", _definition.Manufacturer),
             ("UpgradeCode", MsiNames.Format(_definition.UpgradeCode)),
-            ("ALLUSERS", "1"),
+            // Dual-purpose package: per machine unless MSIINSTALLPERUSER=1 asks for the current user only, in which
+            // case Windows Installer redirects Program Files, the Start menu, the desktop and the -1 registry root.
+            ("ALLUSERS", "2"),
             ("ARPPRODUCTICON", _iconName),
             ("SecureCustomProperties", string.Join(';', secure)),
             // Costing runs before RemoveExistingProducts: with the default "omus", a file already on disk with a
@@ -56,7 +63,9 @@ internal sealed class ProductRows
             ("ARPNOREPAIR", "1"),
             ("ARPNOMODIFY", "1"),
         };
-        properties.AddRange(_definition.Properties.Select(pair => (pair.Key, pair.Value)));
+        // The Property table refuses an empty value (error 2210). An empty default is the same as no row: the
+        // property stays unset unless the command line sets it, which is what an unchecked option means.
+        properties.AddRange(_definition.Properties.Where(pair => pair.Value.Length > 0).Select(pair => (pair.Key, pair.Value)));
 
         using MsiStatement insert = database.Prepare(MsiSchema.InsertStatement("Property", "Property", "Value"));
         foreach ((string name, string value) in properties)
@@ -95,7 +104,8 @@ internal sealed class ProductRows
             string directory = directories.ForShortcut(shortcut);
             string keyPath = shortcut.Id + "_KeyPath";
             WriteComponent(database, shortcut.Id, directory, shortcut.Condition, keyPath);
-            WriteRegistryValue(database, keyPath, 1, shortcut.RegistryKey, shortcut.RegistryName, "#1", shortcut.Id);
+            // The key path follows the shortcut: HKCU beside a per-user shortcut, HKLM beside an all-users one.
+            WriteRegistryValue(database, keyPath, RootInstallation, shortcut.RegistryKey, shortcut.RegistryName, "#1", shortcut.Id);
             // Windows Installer appends ".lnk" itself.
             string name = MsiNames.FileName(shortcut.Name, directories.ShortNames(directory));
             shortcuts.Execute(shortcut.Id + "_Shortcut", directory, name, shortcut.Id, target, shortcut.Description, _iconName, 0, DirectoryLayout.InstallFolder);
@@ -110,7 +120,13 @@ internal sealed class ProductRows
     {
         foreach (RegistryComponentDefinition component in _definition.RegistryComponents)
         {
-            int root = component.Root == RegistryRoot.CurrentUser ? 1 : 2;
+            int root = component.Root switch
+            {
+                RegistryRoot.CurrentUser => RootCurrentUser,
+                RegistryRoot.LocalMachine => RootLocalMachine,
+                RegistryRoot.Installation => RootInstallation,
+                _ => throw new InvalidDataException($"Registry component '{component.Id}' has an unknown root."),
+            };
             for (int index = 0; index < component.Values.Count; index++)
             {
                 RegistryValueDefinition value = component.Values[index];

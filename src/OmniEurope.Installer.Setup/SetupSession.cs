@@ -25,6 +25,7 @@ internal sealed class SetupSession : IDisposable
         LogPath = logPath;
         Installed = InstalledProduct.Find(config.UpgradeCode);
         Mode = SetupDecision.Decide(Installed?.ProductCode, Installed?.Version, config.ProductCode, config.ProductVersion);
+        Scope = Installed?.Scope;
     }
 
     public SetupConfig Config { get; }
@@ -38,6 +39,12 @@ internal sealed class SetupSession : IDisposable
     public InstalledProduct? Installed { get; }
 
     public SetupMode Mode { get; }
+
+    /// <summary>
+    /// Who the operation is for: the installed product's context, or the one chosen for a first installation (command
+    /// line or wizard); null until chosen.
+    /// </summary>
+    public InstallScope? Scope { get; set; }
 
     /// <summary>Raised from the operation's thread with the overall percentage.</summary>
     public event Action<int?>? ProgressChanged;
@@ -55,7 +62,8 @@ internal sealed class SetupSession : IDisposable
             using var input = new FileStream(setupExecutable, FileMode.Open, FileAccess.Read, FileShare.Read);
             SetupPayload payload = SetupPayload.Read(input);
             SetupConfig config = payload.Config;
-            string msiPath = Path.Combine(workFolder, $"{config.ProductName}-{config.ProductVersion}.msi");
+            string fileName = SetupFileNames.Safe(config.ProductName);
+            string msiPath = Path.Combine(workFolder, $"{fileName}-{config.ProductVersion}.msi");
             SetupPayload.Extract(input, payload.MsiOffset, payload.MsiLength, msiPath);
             string? licensePath = null;
             if (payload.LicenseLength > 0)
@@ -64,7 +72,7 @@ internal sealed class SetupSession : IDisposable
                 SetupPayload.Extract(input, payload.LicenseOffset, payload.LicenseLength, licensePath);
             }
 
-            string log = logPath ?? Path.Combine(Path.GetTempPath(), $"{config.ProductName}-Setup-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+            string log = logPath ?? Path.Combine(Path.GetTempPath(), $"{fileName}-Setup-{DateTime.Now:yyyyMMdd-HHmmss}.log");
             return new SetupSession(config, msiPath, licensePath, workFolder, log);
         }
         catch
@@ -75,13 +83,14 @@ internal sealed class SetupSession : IDisposable
         }
     }
 
-    /// <summary>The defaults, overridden by what the previous installation recorded.</summary>
-    public InstallChoices InitialChoices()
+    /// <summary>The default folder of a first installation in <paramref name="scope"/>: Program Files, or the user's Programs folder.</summary>
+    public string DefaultInstallFolder(InstallScope scope) => InstallChoices.Defaults(Config, ProgramsFolder(scope)).InstallFolder;
+
+    /// <summary>The defaults of <paramref name="scope"/>, overridden by what the installation in that context recorded.</summary>
+    public InstallChoices InitialChoices(InstallScope scope)
     {
-        string programFiles = Environment.GetEnvironmentVariable("ProgramW6432")
-            ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-        InstallChoices choices = InstallChoices.Defaults(Config, programFiles);
-        using RegistryKey? settings = Registry.CurrentUser.OpenSubKey(Config.SettingsKey);
+        InstallChoices choices = InstallChoices.Defaults(Config, ProgramsFolder(scope));
+        using RegistryKey? settings = OpenSettings(scope);
         if (settings is not null)
         {
             choices.ApplySettings(name => settings.GetValue(name) as string, Config);
@@ -93,6 +102,7 @@ internal sealed class SetupSession : IDisposable
     /// <summary>Runs <paramref name="action"/>; returns the Windows Installer result (0 or 3010 on success, see <see cref="MsiCommandLines"/>).</summary>
     public uint Run(SetupAction action, InstallChoices choices, IDictionary<string, string> overrides)
     {
+        InstallScope scope = Scope ?? throw new InvalidOperationException("The installation context is not chosen.");
         string? installFolder = InstalledFolder() ?? choices.InstallFolder;
         RunningApplication.Close(installFolder, Config.MainExecutable, Report);
 
@@ -106,8 +116,8 @@ internal sealed class SetupSession : IDisposable
             result = action switch
             {
                 SetupAction.Uninstall => operation.Uninstall(Installed?.ProductCode ?? Config.ProductCode),
-                SetupAction.Repair => operation.Repair(MsiPath),
-                _ => operation.Install(MsiPath, choices.ToCommandLine(Config, overrides)),
+                SetupAction.Repair => operation.Repair(MsiPath, choices.ToCommandLine(Config, overrides), scope),
+                _ => operation.Install(MsiPath, choices.ToCommandLine(Config, overrides), scope),
             };
         }
         finally
@@ -118,7 +128,7 @@ internal sealed class SetupSession : IDisposable
         Report($"Windows Installer result: {result}");
         if (MsiCommandLines.IsSuccess(result))
         {
-            LegacyBundles.Remove(Config.LegacyBundleUpgradeCodes, Report);
+            RemoveLegacyBundles();
         }
 
         return result;
@@ -165,6 +175,42 @@ internal sealed class SetupSession : IDisposable
 
         string? executable = InstalledProduct.ComponentPath(Installed.ProductCode, Config.MainComponentId);
         return executable is null ? null : Path.GetDirectoryName(executable);
+    }
+
+    private static string ProgramsFolder(InstallScope scope) => scope == InstallScope.PerUser
+        ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs")
+        : Environment.GetEnvironmentVariable("ProgramW6432") ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+
+    // The MSI records the choices in the installation's hive: HKCU per user, HKLM per machine (64-bit view, as its
+    // 64-bit components write them). An older per-machine installation recorded them under HKCU, for the account that
+    // ran the setup: read when HKLM holds none, so that its choices carry over.
+    private RegistryKey? OpenSettings(InstallScope scope)
+    {
+        if (scope == InstallScope.PerUser)
+        {
+            return Registry.CurrentUser.OpenSubKey(Config.SettingsKey);
+        }
+
+        using RegistryKey machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+        return machine.OpenSubKey(Config.SettingsKey) ?? Registry.CurrentUser.OpenSubKey(Config.SettingsKey);
+    }
+
+    // A former setup's entry lives under HKLM: removing it needs administrator rights, which only a per-machine run has.
+    private void RemoveLegacyBundles()
+    {
+        if (Config.LegacyBundleUpgradeCodes.Length == 0)
+        {
+            return;
+        }
+
+        if (Elevation.IsElevated())
+        {
+            LegacyBundles.Remove(Config.LegacyBundleUpgradeCodes, Report);
+        }
+        else
+        {
+            Report("Former setup entries are left: removing them needs administrator rights.");
+        }
     }
 
     // The setup's own lines go to the log too; while Windows Installer runs, it writes the log itself.

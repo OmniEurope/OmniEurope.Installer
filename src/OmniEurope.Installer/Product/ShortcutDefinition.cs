@@ -1,6 +1,6 @@
 namespace OmniEurope.Installer.Product;
 
-/// <summary>A shortcut to the main executable. Its presence is tracked by a per-user registry value.</summary>
+/// <summary>A shortcut to the main executable. Its presence is tracked by a registry value in the installation's hive.</summary>
 public sealed record ShortcutDefinition
 {
     /// <summary>Identifier, also the component name; letters, digits, underscores and periods.</summary>
@@ -21,7 +21,7 @@ public sealed record ShortcutDefinition
     /// <summary>Windows Installer condition; the shortcut is installed only when it is true.</summary>
     public string? Condition { get; init; }
 
-    /// <summary>HKCU key of the value that records the shortcut (its key path).</summary>
+    /// <summary>Key of the value that records the shortcut (its key path), under HKCU or HKLM as the installation.</summary>
     public required string RegistryKey { get; init; }
 
     /// <summary>Name of the value that records the shortcut.</summary>

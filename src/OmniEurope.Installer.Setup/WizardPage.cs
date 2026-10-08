@@ -4,6 +4,7 @@ namespace OmniEurope.Installer.Setup;
 internal enum WizardPage
 {
     Language,
+    Scope,
     License,
     Directory,
     Progress,
