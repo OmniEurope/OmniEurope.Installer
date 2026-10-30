@@ -2,9 +2,6 @@
 param([Parameter(Mandatory)][string]$FixtureDirectory)
 
 $ErrorActionPreference = 'Stop'
-Write-Output ('diag identity=' + [Security.Principal.WindowsIdentity]::GetCurrent().Name)
-Write-Output ('diag USERPROFILE=' + $env:USERPROFILE + ' LOCALAPPDATA=' + $env:LOCALAPPDATA + ' TEMP=' + $env:TEMP)
-Write-Output ('diag verified=[' + [Environment]::GetFolderPath('LocalApplicationData') + ']')
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:OE_INSTALLER_INTEGRATION -ne '1') {
     throw 'Installer integration requires an opted-in disposable CI runner.'
 }
@@ -27,9 +24,15 @@ $shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) ($name + '/' + 
 $settings = 'HKCU:\Software\OmniEurope\InstallerFixture\Installer'
 $machineSettings = 'HKLM:\Software\OmniEurope\InstallerFixture\Installer'
 # A function unrolls its output and Windows PowerShell has no Count on a single object: callers wrap it in @().
+# Windows Installer can write a per-user product's entry under HKLM: the hive of the entry says nothing of the context.
 function Get-FixtureEntry {
-    Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue |
+    'HKCU:', 'HKLM:' | ForEach-Object { Get-ChildItem "$_\Software\Microsoft\Windows\CurrentVersion\Uninstall" -ErrorAction SilentlyContinue } |
         Get-ItemProperty | Where-Object DisplayName -eq $name
+}
+# The registration Windows Installer keeps for the products of this user, which is what makes a product per-user.
+function Test-PerUserProduct {
+    @(Get-ChildItem 'HKCU:\Software\Microsoft\Installer\Products' -ErrorAction SilentlyContinue |
+        Get-ItemProperty | Where-Object ProductName -eq $name).Count -eq 1
 }
 function Invoke-Setup([string]$Version, [string]$Operation) {
     $arguments = @('/quiet', '/log', ('"' + (Join-Path $FixtureDirectory ($Version + '-' + $Operation + '.log')) + '"'))
@@ -45,13 +48,10 @@ function Invoke-Setup([string]$Version, [string]$Operation) {
 try {
     Assert-Condition (@(Get-FixtureEntry).Count -eq 0) 'The new account already has a fixture installation.'
     Invoke-Setup 'v1' 'install'
-    foreach ($hive in 'HKCU:', 'HKLM:', 'HKLM:\SOFTWARE\WOW6432Node') {
-        foreach ($found in Get-ChildItem "$hive\Software\Microsoft\Windows\CurrentVersion\Uninstall" -ErrorAction SilentlyContinue | Get-ItemProperty | Where-Object DisplayName -eq $name) {
-            Write-Output ('diag entry=' + $found.PSPath)
-        }
-    }
     $entry = @(Get-FixtureEntry)
-    Assert-Condition ($entry.Count -eq 1) 'Installation did not create exactly one HKCU entry.'
+    Write-Output ('Installed apps entry: ' + (($entry | ForEach-Object PSPath) -join ', '))
+    Assert-Condition ($entry.Count -eq 1) 'Installation did not create exactly one entry.'
+    Assert-Condition (Test-PerUserProduct) 'Windows Installer does not hold the product for this user.'
     $installedVersion = $entry[0].DisplayVersion
     Assert-Condition ($installedVersion -eq '1.0.0') 'Wrong installed version.'
     Assert-Condition ([IO.File]::ReadAllText((Join-Path $installFolder 'data.txt')) -eq 'version 1.0.0') 'Wrong installed data.'
@@ -64,7 +64,8 @@ try {
     # No scope switch: the update must retain the installed per-user context.
     Invoke-Setup 'v2' 'update'
     $entry = @(Get-FixtureEntry)
-    Assert-Condition ($entry.Count -eq 1) 'Update did not keep exactly one HKCU entry.'
+    Assert-Condition ($entry.Count -eq 1) 'Update did not keep exactly one entry.'
+    Assert-Condition (Test-PerUserProduct) 'Update did not keep the product for this user.'
     $updatedVersion = $entry[0].DisplayVersion
     Assert-Condition ($updatedVersion -eq '2.0.0') 'Wrong updated version.'
     Assert-Condition ([IO.File]::ReadAllText((Join-Path $installFolder 'data.txt')) -eq 'version 2.0.0') 'Wrong updated data.'

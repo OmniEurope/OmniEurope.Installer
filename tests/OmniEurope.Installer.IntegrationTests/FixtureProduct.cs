@@ -27,6 +27,8 @@ public sealed class FixtureProduct : IDisposable
 
     private const string UninstallKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
     private const string LegacyEntryName = "OmniEurope.Installer.Fixture.FormerBundle";
+    private const int ContextUserManaged = 1;
+    private const int ContextUserUnmanaged = 2;
 
     private static readonly Guid UpgradeCode = Guid.Parse("8F3B6C41-2D7E-4A95-B1C8-5E0F9A7D3C26");
     private static readonly Guid LegacyBundleCode = Guid.Parse("2E9A7C50-1B4D-4F83-96E2-7D0C5A3B8F14");
@@ -97,38 +99,13 @@ public sealed class FixtureProduct : IDisposable
                 using RegistryKey? entry = uninstall!.OpenSubKey(name);
                 if (entry?.GetValue("DisplayName") as string == Name)
                 {
-                    entries.Add((name, entry.GetValue("DisplayVersion") as string ?? string.Empty, hive == RegistryHive.CurrentUser));
+                    entries.Add((name, entry.GetValue("DisplayVersion") as string ?? string.Empty, IsPerUser(name)));
                 }
             }
         }
 
         return entries;
     }
-
-    /// <summary>Where the "Installed apps" entries of the fixture sit, and the context Windows Installer reports.</summary>
-    public static string EntryLocations() => string.Join(Environment.NewLine, new[]
-    {
-        (RegistryHive.LocalMachine, RegistryView.Registry64), (RegistryHive.LocalMachine, RegistryView.Registry32), (RegistryHive.CurrentUser, RegistryView.Default),
-    }.SelectMany(location =>
-    {
-        using RegistryKey root = RegistryKey.OpenBaseKey(location.Item1, location.Item2);
-        using RegistryKey? uninstall = root.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall");
-        return (uninstall?.GetSubKeyNames() ?? []).Where(name =>
-        {
-            using RegistryKey? entry = uninstall!.OpenSubKey(name);
-            return entry?.GetValue("DisplayName") as string == Name;
-        }).Select(name => $"entry {location.Item1} {location.Item2} {name} context={InstallContexts(name)}").ToArray();
-    }));
-
-    /// <summary>The installation contexts Windows Installer knows the product in: 1 user managed, 2 user unmanaged, 4 machine.</summary>
-    private static string InstallContexts(string productCode) => string.Join(',', new[] { 1, 2, 4 }.Where(context =>
-    {
-        uint length = 0;
-        return MsiGetProductInfoEx(productCode, null, context, "VersionString", null, ref length) == 0;
-    }));
-
-    [DllImport("msi.dll", CharSet = CharSet.Unicode, EntryPoint = "MsiGetProductInfoExW")]
-    private static extern uint MsiGetProductInfoEx(string productCode, string? userSid, int context, string property, StringBuilder? value, ref uint length);
 
     /// <summary>The install folder recorded by the MSI in the installation's hive: HKCU per user, HKLM per machine.</summary>
     public static string? RecordedInstallFolder(bool perUser = false)
@@ -177,6 +154,16 @@ public sealed class FixtureProduct : IDisposable
     }
 
     private static string FixtureAppSource => Path.Combine(Environment.SystemDirectory, "cmd.exe");
+
+    // Windows Installer can write a per-user product's entry under HKLM: only its own record tells the context.
+    private static bool IsPerUser(string productCode) => new[] { ContextUserManaged, ContextUserUnmanaged }.Any(context =>
+    {
+        uint length = 0;
+        return MsiGetProductInfoEx(productCode, null, context, "VersionString", null, ref length) == 0;
+    });
+
+    [DllImport("msi.dll", CharSet = CharSet.Unicode, EntryPoint = "MsiGetProductInfoExW")]
+    private static extern uint MsiGetProductInfoEx(string productCode, string? userSid, int context, string property, StringBuilder? value, ref uint length);
 
     private (string Msi, string Setup) BuildSetup(string version)
     {

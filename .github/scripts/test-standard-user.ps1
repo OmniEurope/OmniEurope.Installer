@@ -20,6 +20,7 @@ $workspace = Join-Path $publicRoot ('OEInstaller-Std-' + [guid]::NewGuid().ToStr
 $accountName = 'oe-it-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
 $user = $null
 $child = $null
+$machineOptIn = @{}
 try {
     New-Item -ItemType Directory -Path $workspace | Out-Null
     Copy-Item -LiteralPath $SetupV1 -Destination (Join-Path $workspace 'v1.exe')
@@ -47,6 +48,11 @@ try {
     $startInfo.WorkingDirectory = $workspace
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
+    # The child's own opt-in check reads these two variables: a profile's environment carries only machine-wide ones.
+    foreach ($name in 'GITHUB_ACTIONS', 'OE_INSTALLER_INTEGRATION') {
+        $machineOptIn[$name] = [Environment]::GetEnvironmentVariable($name, 'Machine')
+        [Environment]::SetEnvironmentVariable($name, [Environment]::GetEnvironmentVariable($name), 'Machine')
+    }
     $child = [Diagnostics.Process]::Start($startInfo)
     $standardOutput = $child.StandardOutput.ReadToEndAsync()
     $standardError = $child.StandardError.ReadToEndAsync()
@@ -70,6 +76,7 @@ try {
     Get-Content -LiteralPath $report | Write-Host
     Write-Host 'Standard-user install, update and uninstall verified.'
 } finally {
+    foreach ($name in $machineOptIn.Keys) { [Environment]::SetEnvironmentVariable($name, $machineOptIn[$name], 'Machine') }
     if ($null -ne $child) {
         if (-not $child.HasExited) { $child.Kill($true); $child.WaitForExit() }
         $child.Dispose()
