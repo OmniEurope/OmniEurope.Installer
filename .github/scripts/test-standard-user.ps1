@@ -21,6 +21,8 @@ $accountName = 'oe-it-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
 $user = $null
 $child = $null
 $machineOptIn = @{}
+$msiPolicyKey = 'HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
+$msiPolicySet = $false
 try {
     New-Item -ItemType Directory -Path $workspace | Out-Null
     Copy-Item -LiteralPath $SetupV1 -Destination (Join-Path $workspace 'v1.exe')
@@ -53,6 +55,11 @@ try {
         $machineOptIn[$name] = [Environment]::GetEnvironmentVariable($name, 'Machine')
         [Environment]::SetEnvironmentVariable($name, [Environment]::GetEnvironmentVariable($name), 'Machine')
     }
+    # Windows Server rejects a non-elevated per-user install (1625) unless this policy allows it, as client editions do
+    # by default: https://learn.microsoft.com/windows/win32/msi/disablemsi
+    $msiPolicyBefore = [Microsoft.Win32.Registry]::GetValue($msiPolicyKey, 'DisableMSI', $null)
+    $msiPolicySet = $true
+    [Microsoft.Win32.Registry]::SetValue($msiPolicyKey, 'DisableMSI', 0, [Microsoft.Win32.RegistryValueKind]::DWord)
     $child = [Diagnostics.Process]::Start($startInfo)
     $standardOutput = $child.StandardOutput.ReadToEndAsync()
     $standardError = $child.StandardError.ReadToEndAsync()
@@ -76,10 +83,17 @@ try {
     Get-Content -LiteralPath $report | Write-Host
     Write-Host 'Standard-user install, update and uninstall verified.'
 } finally {
-    foreach ($name in $machineOptIn.Keys) { [Environment]::SetEnvironmentVariable($name, $machineOptIn[$name], 'Machine') }
     if ($null -ne $child) {
         if (-not $child.HasExited) { $child.Kill($true); $child.WaitForExit() }
         $child.Dispose()
+    }
+    foreach ($name in $machineOptIn.Keys) { [Environment]::SetEnvironmentVariable($name, $machineOptIn[$name], 'Machine') }
+    if ($msiPolicySet) {
+        if ($null -ne $msiPolicyBefore) {
+            [Microsoft.Win32.Registry]::SetValue($msiPolicyKey, 'DisableMSI', $msiPolicyBefore, [Microsoft.Win32.RegistryValueKind]::DWord)
+        } else {
+            Remove-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Installer' -Name 'DisableMSI'
+        }
     }
     try {
         if ($null -ne $user) {
