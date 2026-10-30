@@ -3,11 +3,8 @@ param([Parameter(Mandatory)][string]$FixtureDirectory)
 
 $ErrorActionPreference = 'Stop'
 Write-Output ('diag identity=' + [Security.Principal.WindowsIdentity]::GetCurrent().Name)
-Write-Output ('diag USERPROFILE=' + $env:USERPROFILE + ' readable=' + (Test-Path -LiteralPath $env:USERPROFILE))
-Write-Output ('diag LOCALAPPDATA=' + $env:LOCALAPPDATA + ' TEMP=' + $env:TEMP)
-Write-Output ('diag verified=[' + [Environment]::GetFolderPath('LocalApplicationData') + '] unverified=[' + [Environment]::GetFolderPath('LocalApplicationData', 'DoNotVerify') + ']')
-Write-Output ('diag hkcu=' + (Test-Path -LiteralPath 'HKCU:\Software'))
-Write-Output ('diag shell=' + (Get-ItemProperty -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders' -Name 'Local AppData' -ErrorAction SilentlyContinue).'Local AppData')
+Write-Output ('diag USERPROFILE=' + $env:USERPROFILE + ' LOCALAPPDATA=' + $env:LOCALAPPDATA + ' TEMP=' + $env:TEMP)
+Write-Output ('diag verified=[' + [Environment]::GetFolderPath('LocalApplicationData') + ']')
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:OE_INSTALLER_INTEGRATION -ne '1') {
     throw 'Installer integration requires an opted-in disposable CI runner.'
 }
@@ -22,12 +19,6 @@ try {
     Assert-Condition (-not (@($identity.Groups | ForEach-Object Value) -contains 'S-1-5-32-544')) 'The fixture belongs to Administrators, even if its token is filtered.'
     $sid = $identity.User.Value
 } finally { $identity.Dispose() }
-
-# Start-Process -Credential passes the controller's environment: its TEMP and TMP are out of this account's reach.
-$userTemp = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Temp'
-New-Item -ItemType Directory -Force -Path $userTemp | Out-Null
-$env:TEMP = $userTemp
-$env:TMP = $userTemp
 
 $name = 'OmniEurope Installer Fixture'
 $installFolder = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs/OmniEurope.Tests/Fixture'
@@ -54,6 +45,11 @@ function Invoke-Setup([string]$Version, [string]$Operation) {
 try {
     Assert-Condition (@(Get-FixtureEntry).Count -eq 0) 'The new account already has a fixture installation.'
     Invoke-Setup 'v1' 'install'
+    foreach ($hive in 'HKCU:', 'HKLM:', 'HKLM:\SOFTWARE\WOW6432Node') {
+        foreach ($found in Get-ChildItem "$hive\Software\Microsoft\Windows\CurrentVersion\Uninstall" -ErrorAction SilentlyContinue | Get-ItemProperty | Where-Object DisplayName -eq $name) {
+            Write-Output ('diag entry=' + $found.PSPath)
+        }
+    }
     $entry = @(Get-FixtureEntry)
     Assert-Condition ($entry.Count -eq 1) 'Installation did not create exactly one HKCU entry.'
     $installedVersion = $entry[0].DisplayVersion

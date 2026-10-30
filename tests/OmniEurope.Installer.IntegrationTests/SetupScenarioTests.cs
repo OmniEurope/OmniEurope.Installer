@@ -217,7 +217,7 @@ public sealed class SetupScenarioTests : IClassFixture<FixtureProduct>, IDisposa
     private static string Quoted(string path) => $"'{path.Replace("'", "''")}'";
 
     // The lines of a verbose Windows Installer log that tell which context it chose.
-    private static string ContextLines(string log) => string.Join(Environment.NewLine, log.Split('\n')
+    private static string ContextLines(string log) => FixtureProduct.EntryLocations() + Environment.NewLine + string.Join(Environment.NewLine, log.Split('\n')
         .Where(line => new[] { "ALLUSERS", "MSIINSTALLPERUSER", "per-user", "per-machine", "INSTALLFOLDER", "Command Line", "Windows Installer result" }
             .Any(mark => line.Contains(mark, StringComparison.OrdinalIgnoreCase)))
         .Select(line => line.Length > 200 ? line[..200] : line)

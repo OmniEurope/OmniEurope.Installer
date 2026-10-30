@@ -31,17 +31,33 @@ try {
     # icacls reads a bare SID as an account name: the leading * marks it as a SID.
     & icacls.exe $workspace /grant ('*' + $user.SID.Value + ':(OI)(CI)M') | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Could not grant the fixture user access to its test files.' }
-    $credential = [pscredential]::new(($env:COMPUTERNAME + '\' + $accountName), $password)
-    $powershell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
-    # Loading this new user's profile is required to exercise its genuine HKCU and shell folders.
-    # https://learn.microsoft.com/powershell/module/microsoft.powershell.management/start-process
-    $child = Start-Process -FilePath $powershell -Credential $credential -LoadUserProfile -WindowStyle Hidden -PassThru `
-        -WorkingDirectory $workspace -ArgumentList @('-NoProfile', '-NonInteractive', '-File', ('"' + (Join-Path $workspace 'scenario.ps1') + '"'),
-        '-FixtureDirectory', ('"' + $workspace + '"')) `
-        -RedirectStandardOutput (Join-Path $workspace 'stdout.log') -RedirectStandardError (Join-Path $workspace 'stderr.log')
+    # Loading this new user's profile is required to exercise its genuine HKCU and shell folders. Start-Process would
+    # pass the controller's environment, which points the shell folders at a profile out of this account's reach;
+    # left untouched, ProcessStartInfo.Environment gives the process the environment of the user's own profile.
+    $startInfo = [Diagnostics.ProcessStartInfo]::new((Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'))
+    foreach ($argument in '-NoProfile', '-NonInteractive', '-File', (Join-Path $workspace 'scenario.ps1'), '-FixtureDirectory', $workspace) {
+        $startInfo.ArgumentList.Add($argument)
+    }
+    $startInfo.UserName = $accountName
+    $startInfo.Domain = $env:COMPUTERNAME
+    $startInfo.Password = $password
+    $startInfo.LoadUserProfile = $true
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.WorkingDirectory = $workspace
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $child = [Diagnostics.Process]::Start($startInfo)
+    $standardOutput = $child.StandardOutput.ReadToEndAsync()
+    $standardError = $child.StandardError.ReadToEndAsync()
     if (-not $child.WaitForExit(240000)) { throw 'The standard-user scenario exceeded its deadline.' }
     if ($child.ExitCode -ne 0) {
-        Get-Content -LiteralPath (Join-Path $workspace 'stdout.log'), (Join-Path $workspace 'stderr.log') | Write-Host
+        Write-Host $standardOutput.GetAwaiter().GetResult()
+        Write-Host $standardError.GetAwaiter().GetResult()
+        foreach ($log in Get-ChildItem -LiteralPath $workspace -Filter '*.log') {
+            Write-Host "--- $($log.Name)"
+            Get-Content -LiteralPath $log.FullName -Tail 25 | Write-Host
+        }
         throw "Standard-user scenario failed with exit code $($child.ExitCode)."
     }
     $report = Join-Path $workspace 'result.json'

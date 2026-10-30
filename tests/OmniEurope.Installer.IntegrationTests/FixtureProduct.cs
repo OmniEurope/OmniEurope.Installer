@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
 using Microsoft.Win32;
@@ -103,6 +104,31 @@ public sealed class FixtureProduct : IDisposable
 
         return entries;
     }
+
+    /// <summary>Where the "Installed apps" entries of the fixture sit, and the context Windows Installer reports.</summary>
+    public static string EntryLocations() => string.Join(Environment.NewLine, new[]
+    {
+        (RegistryHive.LocalMachine, RegistryView.Registry64), (RegistryHive.LocalMachine, RegistryView.Registry32), (RegistryHive.CurrentUser, RegistryView.Default),
+    }.SelectMany(location =>
+    {
+        using RegistryKey root = RegistryKey.OpenBaseKey(location.Item1, location.Item2);
+        using RegistryKey? uninstall = root.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall");
+        return (uninstall?.GetSubKeyNames() ?? []).Where(name =>
+        {
+            using RegistryKey? entry = uninstall!.OpenSubKey(name);
+            return entry?.GetValue("DisplayName") as string == Name;
+        }).Select(name => $"entry {location.Item1} {location.Item2} {name} context={InstallContexts(name)}").ToArray();
+    }));
+
+    /// <summary>The installation contexts Windows Installer knows the product in: 1 user managed, 2 user unmanaged, 4 machine.</summary>
+    private static string InstallContexts(string productCode) => string.Join(',', new[] { 1, 2, 4 }.Where(context =>
+    {
+        uint length = 0;
+        return MsiGetProductInfoEx(productCode, null, context, "VersionString", null, ref length) == 0;
+    }));
+
+    [DllImport("msi.dll", CharSet = CharSet.Unicode, EntryPoint = "MsiGetProductInfoExW")]
+    private static extern uint MsiGetProductInfoEx(string productCode, string? userSid, int context, string property, StringBuilder? value, ref uint length);
 
     /// <summary>The install folder recorded by the MSI in the installation's hive: HKCU per user, HKLM per machine.</summary>
     public static string? RecordedInstallFolder(bool perUser = false)
