@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/analyzers/">
+    <Project Path="analyzers/OmniEurope.Installer.Analyzers.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/OmniEurope.Installer/OmniEurope.Installer.csproj" />
     <Project Path="src/OmniEurope.Installer.Setup/OmniEurope.Installer.Setup.csproj" />

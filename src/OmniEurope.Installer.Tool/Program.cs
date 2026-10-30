@@ -17,6 +17,7 @@ if (args.Length == 0 || !commands.Contains(args[0]))
     return 2;
 }
 
+string[] required = args[0] == "msi" ? ["definition", "source", "version", "output"] : ["definition", "msi", "host", "icon", "output"];
 var options = new Dictionary<string, string>(StringComparer.Ordinal);
 for (int index = 1; index < args.Length; index += 2)
 {
@@ -26,10 +27,17 @@ for (int index = 1; index < args.Length; index += 2)
         return 2;
     }
 
-    options[args[index][2..]] = args[index + 1];
+    string name = args[index][2..];
+    if (!required.Contains(name) && !(args[0] == "setup" && name == "license"))
+    {
+        Console.Error.WriteLine($"Unknown option: {args[index]}");
+        Console.Error.WriteLine(Usage);
+        return 2;
+    }
+
+    options[name] = args[index + 1];
 }
 
-string[] required = args[0] == "msi" ? ["definition", "source", "version", "output"] : ["definition", "msi", "host", "icon", "output"];
 string[] missing = required.Where(name => !options.ContainsKey(name)).ToArray();
 if (missing.Length > 0)
 {

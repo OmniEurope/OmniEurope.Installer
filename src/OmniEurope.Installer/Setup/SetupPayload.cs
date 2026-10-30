@@ -60,7 +60,7 @@ public sealed class SetupPayload
     }
 
     /// <summary>Reads the payload of a setup executable.</summary>
-    /// <exception cref="InvalidDataException">The file carries no payload.</exception>
+    /// <exception cref="InvalidDataException">The file carries no valid payload.</exception>
     public static SetupPayload Read(Stream input)
     {
         if (input.Length < TrailerLength)
@@ -74,12 +74,16 @@ public sealed class SetupPayload
         long msiLength = reader.ReadInt64();
         long licenseLength = reader.ReadInt64();
         byte[] magic = reader.ReadBytes(Magic.Length);
-        long payloadStart = input.Length - TrailerLength - licenseLength - msiLength - configLength;
-        if (!IsMagic(magic) || configLength <= 0 || msiLength <= 0 || licenseLength < 0 || payloadStart < 0)
+        long available = input.Length - TrailerLength;
+        // Bound each part before subtraction: summing untrusted Int64 lengths can overflow.
+        if (!IsMagic(magic) || configLength <= 0 || configLength > int.MaxValue || msiLength <= 0 || licenseLength < 0
+            || configLength > available || msiLength > available - configLength
+            || licenseLength > available - configLength - msiLength)
         {
             throw new InvalidDataException("The setup program carries no product.");
         }
 
+        long payloadStart = available - configLength - msiLength - licenseLength;
         input.Position = payloadStart;
         SetupConfig config = Deserialize(reader.ReadBytes((int)configLength));
         long msiOffset = payloadStart + configLength;

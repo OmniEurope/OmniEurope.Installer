@@ -23,6 +23,7 @@
   <ItemGroup>
     <Compile Include="..\OmniEurope.Installer.Tests\TempFolder.cs" Link="Shared\TempFolder.cs" />
     <Compile Include="..\OmniEurope.Installer.Tests\ProcessRunner.cs" Link="Shared\ProcessRunner.cs" />
+    <Compile Include="..\OmniEurope.Installer.Tests\Guards\RepositoryScan.cs" Link="Shared\RepositoryScan.cs" />
   </ItemGroup>
 
   <ItemGroup>

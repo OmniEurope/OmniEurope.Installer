@@ -1,4 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\analyzers\OmniEurope.Installer.Analyzers.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all"
+                      SkipGetTargetFrameworkProperties="true" />
+  </ItemGroup>
   <PropertyGroup>
     <!-- .NET Framework 4.7.2 ships with Windows 10 1803+ and Windows 11: the setup program carries no
          runtime and stays small. The MSI and the product configuration are appended to the built exe

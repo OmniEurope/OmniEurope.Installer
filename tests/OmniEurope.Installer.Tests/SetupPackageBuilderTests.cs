@@ -130,6 +130,42 @@ public sealed class SetupPackageBuilderTests : IDisposable
     }
 
     [Fact]
+    public void Payload_lengths_that_overflow_are_rejected_as_a_damaged_setup()
+    {
+        using var input = new MemoryStream(new byte[64]);
+        input.Position = 32;
+        using var writer = new BinaryWriter(input, System.Text.Encoding.UTF8, leaveOpen: true);
+        writer.Write(long.MaxValue);
+        writer.Write(long.MaxValue);
+        writer.Write(0L);
+        writer.Write("OESETUP1"u8.ToArray());
+        writer.Flush();
+
+        Should.Throw<InvalidDataException>(() => SetupPayload.Read(input));
+    }
+
+    [Theory]
+    [InlineData(0L, 1L, 0L)]
+    [InlineData(1L, 0L, 0L)]
+    [InlineData(1L, 1L, -1L)]
+    [InlineData(2147483648L, 1L, 0L)]
+    [InlineData(1L, long.MaxValue, 0L)]
+    [InlineData(1L, 1L, long.MaxValue)]
+    public void Impossible_payload_part_lengths_are_refused(long configLength, long msiLength, long licenseLength)
+    {
+        using var input = new MemoryStream(new byte[64]);
+        input.Position = 32;
+        using var writer = new BinaryWriter(input, System.Text.Encoding.UTF8, leaveOpen: true);
+        writer.Write(configLength);
+        writer.Write(msiLength);
+        writer.Write(licenseLength);
+        writer.Write("OESETUP1"u8.ToArray());
+        writer.Flush();
+
+        Should.Throw<InvalidDataException>(() => SetupPayload.Read(input));
+    }
+
+    [Fact]
     public void A_truncated_part_is_not_extracted_half_way_silently()
     {
         using var input = new MemoryStream(new byte[5]);

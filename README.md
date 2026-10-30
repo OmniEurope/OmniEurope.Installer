@@ -125,6 +125,8 @@ dotnet test --project tests/OmniEurope.Installer.Tests/OmniEurope.Installer.Test
 
 Warnings are errors. The continuous integration (`.github/workflows/ci.yml`, Windows) builds the solution and runs
 the unit tests on every push and pull request to `main` and `develop`.
+The unit job collects coverage and enforces 95% line coverage, 85% branch coverage and a maximum CRAP score
+of 30 without exceptions. Both jobs reject missing, empty or unsuccessful TRX results.
 
 A second job runs `tests/OmniEurope.Installer.IntegrationTests`: the setup executable is run for real, quietly, on a
 throwaway fixture product (install, then uninstall leaving no file, folder, shortcut, entry or setting; update to a
@@ -132,6 +134,12 @@ single entry; refused downgrade; running application closed; former setup entry 
 program giving `3010` without restart). These tests install on the machine:
 they refuse to run without `OE_INSTALLER_INTEGRATION=1` and administrator rights, and are meant for a disposable
 machine.
+
+The standard-user scenario additionally requires the disposable CI runner: its elevated controller creates a
+temporary account in Users, runs install/update/uninstall with that account's profile, checks that its token is
+neither elevated nor a member of Administrators, and removes the account and profile. This scenario refuses to
+create an account outside the opted-in CI environment. Its installation proof must come from that runner;
+compiling it or running the unit suite does not provide that proof.
 
 Branches: `main` for releases, `develop` for integration, `feature/*` for work in progress.
 
@@ -149,6 +157,8 @@ The shipped code uses no third-party package: only .NET, .NET Framework 4.7.2 (s
 
 Build only: `Microsoft.NETFramework.ReferenceAssemblies` (MIT), reference assemblies to compile the setup host
 without a targeting pack installed; nothing of it is shipped.
+`Microsoft.CodeAnalysis.CSharp` (MIT) builds the internal GEN008 convention analyzer; its dependencies are
+private build assets and are not included in the library package or setup executable.
 
 ## License
 

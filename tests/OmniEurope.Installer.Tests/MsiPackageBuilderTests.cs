@@ -147,6 +147,26 @@ public sealed class MsiPackageBuilderTests : IDisposable
     }
 
     [Fact]
+    public void The_public_builder_rejects_the_same_invalid_definition_as_json_without_writing_output()
+    {
+        ProductDefinition definition = Definition() with { InstallDirectory = [] };
+        string json = _temp.Combine("invalid.json");
+        File.WriteAllText(json, System.Text.Json.JsonSerializer.Serialize(definition,
+            new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() },
+            }));
+        string output = _temp.Combine("out", "invalid.msi");
+
+        Should.Throw<InvalidDataException>(() => ProductDefinition.Load(json)).Message.ShouldContain("installDirectory");
+        Should.Throw<InvalidDataException>(() => MsiPackageBuilder.Build(definition, new MsiBuildRequest(_source, "1.0.0", output)))
+            .Message.ShouldContain("installDirectory");
+        File.Exists(output).ShouldBeFalse();
+        Directory.Exists(Path.GetDirectoryName(output)).ShouldBeFalse();
+    }
+
+    [Fact]
     public void A_missing_or_empty_published_folder_is_refused()
     {
         string empty = _temp.Combine("empty");

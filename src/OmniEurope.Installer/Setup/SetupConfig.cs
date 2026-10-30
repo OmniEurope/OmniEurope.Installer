@@ -37,7 +37,10 @@ public sealed class SetupConfig
     [DataMember(Order = 7)]
     public string[] InstallDirectory { get; set; } = [];
 
-    /// <summary>HKCU key where the MSI records the choices, read back to prefill the wizard.</summary>
+    /// <summary>
+    /// Key where the MSI records the choices: HKCU for a per-user installation, HKLM for a per-machine
+    /// installation. Read back to prefill the wizard, with HKCU fallback for older per-machine settings.
+    /// </summary>
     [DataMember(Order = 8)]
     public string SettingsKey { get; set; } = string.Empty;
 

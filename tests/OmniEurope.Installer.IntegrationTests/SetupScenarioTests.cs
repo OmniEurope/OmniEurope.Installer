@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using OmniEurope.Installer.Tests;
+using OmniEurope.Installer.Tests.Guards;
 using Shouldly;
 
 namespace OmniEurope.Installer.IntegrationTests;
@@ -168,6 +169,20 @@ public sealed class SetupScenarioTests : IClassFixture<FixtureProduct>, IDisposa
         updated.PerUser.ShouldBeTrue();
         File.ReadAllText(Path.Combine(FixtureProduct.UserInstallFolder, FixtureProduct.DataFile)).ShouldBe("version 2.0.0");
         Directory.Exists(FixtureProduct.InstallFolder).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void A_real_standard_user_installs_updates_and_uninstalls_without_administrator_membership()
+    {
+        (int code, string output) = ProcessRunner.Run("pwsh", "-NoProfile", "-File",
+            Path.Combine(RepositoryScan.Root, ".github", "scripts", "test-standard-user.ps1"),
+            "-SetupV1", _fixture.SetupV1, "-SetupV2", _fixture.SetupV2);
+
+        code.ShouldBe(0, output);
+        output.ShouldContain("Standard-user install, update and uninstall verified.");
+        FixtureProduct.Entries().ShouldBeEmpty("the standard user's installation must not affect the controller's context");
+        Directory.Exists(FixtureProduct.InstallFolder).ShouldBeFalse();
+        FixtureProduct.RecordedInstallFolder().ShouldBeNull();
     }
 
     [Fact]

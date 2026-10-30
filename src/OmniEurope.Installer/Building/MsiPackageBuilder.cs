@@ -33,10 +33,12 @@ public static partial class MsiPackageBuilder
     private const uint PidSecurity = 19;
 
     /// <summary>Builds the MSI described by <paramref name="definition"/> for <paramref name="request"/>.</summary>
+    /// <exception cref="InvalidDataException">The product definition is invalid.</exception>
     /// <exception cref="ArgumentException">The version is not a valid product version.</exception>
     /// <exception cref="MsiException">Windows Installer rejected the database.</exception>
     public static MsiBuildResult Build(ProductDefinition definition, MsiBuildRequest request)
     {
+        ProductDefinitionValidator.Validate(definition, nameof(definition));
         ValidateVersion(request.Version);
         IReadOnlyList<SourceFile> files = SourceTree.Collect(request.SourceDirectory, definition.Exclude);
         SourceFile mainExecutable = files.FirstOrDefault(file => string.Equals(file.RelativePath, definition.MainExecutable.Replace('/', '\\'), StringComparison.OrdinalIgnoreCase))
