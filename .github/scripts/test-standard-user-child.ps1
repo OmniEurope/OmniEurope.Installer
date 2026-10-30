@@ -2,6 +2,12 @@
 param([Parameter(Mandatory)][string]$FixtureDirectory)
 
 $ErrorActionPreference = 'Stop'
+Write-Output ('diag identity=' + [Security.Principal.WindowsIdentity]::GetCurrent().Name)
+Write-Output ('diag USERPROFILE=' + $env:USERPROFILE + ' readable=' + (Test-Path -LiteralPath $env:USERPROFILE))
+Write-Output ('diag LOCALAPPDATA=' + $env:LOCALAPPDATA + ' TEMP=' + $env:TEMP)
+Write-Output ('diag verified=[' + [Environment]::GetFolderPath('LocalApplicationData') + '] unverified=[' + [Environment]::GetFolderPath('LocalApplicationData', 'DoNotVerify') + ']')
+Write-Output ('diag hkcu=' + (Test-Path -LiteralPath 'HKCU:\Software'))
+Write-Output ('diag shell=' + (Get-ItemProperty -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders' -Name 'Local AppData' -ErrorAction SilentlyContinue).'Local AppData')
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:OE_INSTALLER_INTEGRATION -ne '1') {
     throw 'Installer integration requires an opted-in disposable CI runner.'
 }

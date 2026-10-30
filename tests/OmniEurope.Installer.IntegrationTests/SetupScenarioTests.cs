@@ -136,10 +136,11 @@ public sealed class SetupScenarioTests : IClassFixture<FixtureProduct>, IDisposa
     [Fact]
     public void A_per_user_install_lands_in_the_user_profile_and_its_uninstall_leaves_nothing()
     {
-        _fixture.Run(_fixture.SetupV1, "/peruser").ExitCode.ShouldBe(Success);
+        (int exitCode, string log) = _fixture.Run(_fixture.SetupV1, "/peruser");
+        exitCode.ShouldBe(Success);
 
         var entry = FixtureProduct.Entries().ShouldHaveSingleItem();
-        entry.PerUser.ShouldBeTrue();
+        entry.PerUser.ShouldBeTrue(ContextLines(log));
         File.ReadAllText(Path.Combine(FixtureProduct.UserInstallFolder, FixtureProduct.DataFile)).ShouldBe("version 1.0.0");
         Directory.Exists(FixtureProduct.InstallFolder).ShouldBeFalse("a per-user install writes nothing under Program Files");
         File.Exists(FixtureProduct.UserStartMenuShortcut).ShouldBeTrue();
@@ -159,14 +160,15 @@ public sealed class SetupScenarioTests : IClassFixture<FixtureProduct>, IDisposa
     [Fact]
     public void An_update_keeps_the_context_of_the_installed_product()
     {
-        _fixture.Run(_fixture.SetupV1, "/peruser").ExitCode.ShouldBe(Success);
+        (int exitCode, string log) = _fixture.Run(_fixture.SetupV1, "/peruser");
+        exitCode.ShouldBe(Success);
 
         // No /peruser: a quiet first install would be per machine, but the installed product's context wins.
         _fixture.Run(_fixture.SetupV2).ExitCode.ShouldBe(Success);
 
         var updated = FixtureProduct.Entries().ShouldHaveSingleItem();
         updated.Version.ShouldBe("2.0.0");
-        updated.PerUser.ShouldBeTrue();
+        updated.PerUser.ShouldBeTrue(ContextLines(log));
         File.ReadAllText(Path.Combine(FixtureProduct.UserInstallFolder, FixtureProduct.DataFile)).ShouldBe("version 2.0.0");
         Directory.Exists(FixtureProduct.InstallFolder).ShouldBeFalse();
     }
@@ -213,6 +215,13 @@ public sealed class SetupScenarioTests : IClassFixture<FixtureProduct>, IDisposa
 
     // A PowerShell single-quoted literal: a quote inside the path is doubled.
     private static string Quoted(string path) => $"'{path.Replace("'", "''")}'";
+
+    // The lines of a verbose Windows Installer log that tell which context it chose.
+    private static string ContextLines(string log) => string.Join(Environment.NewLine, log.Split('\n')
+        .Where(line => new[] { "ALLUSERS", "MSIINSTALLPERUSER", "per-user", "per-machine", "INSTALLFOLDER", "Command Line", "Windows Installer result" }
+            .Any(mark => line.Contains(mark, StringComparison.OrdinalIgnoreCase)))
+        .Select(line => line.Length > 200 ? line[..200] : line)
+        .Take(50));
 
     private static void Stop(Process process)
     {
