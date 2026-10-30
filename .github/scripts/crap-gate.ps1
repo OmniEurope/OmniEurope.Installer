@@ -1,8 +1,7 @@
 # crap-gate 3
 #
-# Canonical CRAP gate (STD-CRAP). DO NOT EDIT A COPY: this file is maintained in the kit
-# (deploy/scripts/crap-gate.ps1) and copied verbatim into scripts/ of every .NET repository. Everything
-# project-specific lives in the repository's .config/crap-exceptions.json.
+# CRAP gate of the continuous integration. Everything project-specific lives in an exceptions file; this
+# repository has none, so no method above the threshold is admitted.
 #
 # Score of a method: CC^2 * (1 - line coverage)^3 + CC, read from the coverlet Cobertura reports found
 # under -CoverageRoot (cyclomatic complexity and line hits). Several reports are merged: a line is covered

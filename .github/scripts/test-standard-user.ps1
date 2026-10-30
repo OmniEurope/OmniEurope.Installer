@@ -28,7 +28,8 @@ try {
     $password = ConvertTo-SecureString ('OE-aA9!' + [guid]::NewGuid().ToString('N')) -AsPlainText -Force
     $user = New-LocalUser -Name $accountName -Password $password -Description 'Disposable installer integration fixture'
     Add-LocalGroupMember -SID ([Security.Principal.SecurityIdentifier]::new('S-1-5-32-545')) -Member $user
-    & icacls.exe $workspace /grant ($user.SID.Value + ':(OI)(CI)M') | Out-Null
+    # icacls reads a bare SID as an account name: the leading * marks it as a SID.
+    & icacls.exe $workspace /grant ('*' + $user.SID.Value + ':(OI)(CI)M') | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Could not grant the fixture user access to its test files.' }
     $credential = [pscredential]::new(($env:COMPUTERNAME + '\' + $accountName), $password)
     $powershell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'

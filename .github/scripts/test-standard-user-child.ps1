@@ -17,15 +17,22 @@ try {
     $sid = $identity.User.Value
 } finally { $identity.Dispose() }
 
+# Start-Process -Credential passes the controller's environment: its TEMP and TMP are out of this account's reach.
+$userTemp = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Temp'
+New-Item -ItemType Directory -Force -Path $userTemp | Out-Null
+$env:TEMP = $userTemp
+$env:TMP = $userTemp
+
 $name = 'OmniEurope Installer Fixture'
 $installFolder = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs/OmniEurope.Tests/Fixture'
 $machineFolder = Join-Path ([Environment]::GetFolderPath('ProgramFiles')) 'OmniEurope.Tests/Fixture'
 $shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) ($name + '/' + $name + '.lnk')
 $settings = 'HKCU:\Software\OmniEurope\InstallerFixture\Installer'
 $machineSettings = 'HKLM:\Software\OmniEurope\InstallerFixture\Installer'
+# A function unrolls its output and Windows PowerShell has no Count on a single object: callers wrap it in @().
 function Get-FixtureEntry {
-    @(Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue |
-        Get-ItemProperty | Where-Object DisplayName -eq $name)
+    Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue |
+        Get-ItemProperty | Where-Object DisplayName -eq $name
 }
 function Invoke-Setup([string]$Version, [string]$Operation) {
     $arguments = @('/quiet', '/log', ('"' + (Join-Path $FixtureDirectory ($Version + '-' + $Operation + '.log')) + '"'))
@@ -39,9 +46,9 @@ function Invoke-Setup([string]$Version, [string]$Operation) {
 }
 
 try {
-    Assert-Condition ((Get-FixtureEntry).Count -eq 0) 'The new account already has a fixture installation.'
+    Assert-Condition (@(Get-FixtureEntry).Count -eq 0) 'The new account already has a fixture installation.'
     Invoke-Setup 'v1' 'install'
-    $entry = Get-FixtureEntry
+    $entry = @(Get-FixtureEntry)
     Assert-Condition ($entry.Count -eq 1) 'Installation did not create exactly one HKCU entry.'
     $installedVersion = $entry[0].DisplayVersion
     Assert-Condition ($installedVersion -eq '1.0.0') 'Wrong installed version.'
@@ -54,17 +61,17 @@ try {
 
     # No scope switch: the update must retain the installed per-user context.
     Invoke-Setup 'v2' 'update'
-    $entry = Get-FixtureEntry
+    $entry = @(Get-FixtureEntry)
     Assert-Condition ($entry.Count -eq 1) 'Update did not keep exactly one HKCU entry.'
     $updatedVersion = $entry[0].DisplayVersion
     Assert-Condition ($updatedVersion -eq '2.0.0') 'Wrong updated version.'
     Assert-Condition ([IO.File]::ReadAllText((Join-Path $installFolder 'data.txt')) -eq 'version 2.0.0') 'Wrong updated data.'
     Assert-Condition (-not (Test-Path -LiteralPath $machineFolder)) 'Update switched to the machine context.'
 } finally {
-    if ((Get-FixtureEntry).Count -gt 0) { Invoke-Setup 'v2' 'uninstall' }
+    if (@(Get-FixtureEntry).Count -gt 0) { Invoke-Setup 'v2' 'uninstall' }
 }
 
-$clean = (Get-FixtureEntry).Count -eq 0 -and -not (Test-Path -LiteralPath $installFolder) -and
+$clean = @(Get-FixtureEntry).Count -eq 0 -and -not (Test-Path -LiteralPath $installFolder) -and
     -not (Test-Path -LiteralPath $shortcut) -and -not (Test-Path -LiteralPath $settings)
 Assert-Condition $clean 'Uninstall left files, a shortcut, settings or an Installed apps entry.'
 @{ UserSid = $sid; IsAdministrator = $isAdministrator; InstalledVersion = $installedVersion;

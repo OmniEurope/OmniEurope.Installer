@@ -56,6 +56,27 @@ public sealed class SetupPackageBuilderTests : IDisposable
     }
 
     [Fact]
+    public void The_public_setup_builder_rejects_the_same_invalid_definition_as_json_without_writing_output()
+    {
+        (ProductDefinition valid, string msi) = BuildMsi();
+        ProductDefinition definition = valid with { InstallDirectory = [] };
+        string json = _temp.Combine("invalid.json");
+        File.WriteAllText(json, System.Text.Json.JsonSerializer.Serialize(definition,
+            new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() },
+            }));
+        string output = _temp.Combine("out", "App-Setup.exe");
+
+        Should.Throw<InvalidDataException>(() => ProductDefinition.Load(json)).Message.ShouldContain("installDirectory");
+        Should.Throw<InvalidDataException>(() => SetupPackageBuilder.Build(definition, new SetupBuildRequest(HostStandIn, msi, null, IconSource, output)))
+            .Message.ShouldContain("installDirectory");
+        File.Exists(output).ShouldBeFalse();
+        Directory.Exists(Path.GetDirectoryName(output)).ShouldBeFalse();
+    }
+
+    [Fact]
     public void An_msi_of_another_product_is_refused()
     {
         (ProductDefinition definition, string msi) = BuildMsi();

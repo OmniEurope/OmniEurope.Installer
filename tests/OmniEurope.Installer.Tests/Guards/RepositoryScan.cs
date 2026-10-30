@@ -7,7 +7,7 @@
 // vacuously true over an empty set, so it reports green while protecting nothing (seen in a nested checkout:
 // a guard excluded the whole repository when the suite ran from a worktree).
 //
-// Version 2: build output AND nested checkouts are skipped (.git, .worktrees, .claude/worktrees). A
+// Version 2: build output AND nested checkouts are skipped (.git, .worktrees). A
 // nested checkout is another branch's code and changes under the scan: a parallel agent deleting a file
 // made two architecture guards throw FileNotFoundException (observed in a nested checkout).
 //
@@ -15,7 +15,7 @@
 // repository root is the folder holding global.json, found by walking up from the test binary, so no
 // path constant is needed.
 // Keep the first line of this file in the copy: it tells the kit's verify-rules.ps1 which version of
-// the model the copy implements (STD-KITCOPY).
+// the model the copy implements.
 
 using System;
 using System.Collections.Generic;
@@ -76,7 +76,6 @@ internal static class RepositoryScan
             || file.Contains($"{separator}obj{separator}", StringComparison.OrdinalIgnoreCase)
             || file.Contains($"{separator}node_modules{separator}", StringComparison.OrdinalIgnoreCase)
             || file.Contains($"{separator}.git{separator}", StringComparison.OrdinalIgnoreCase)
-            || file.Contains($"{separator}.worktrees{separator}", StringComparison.OrdinalIgnoreCase)
-            || file.Contains($"{separator}.claude{separator}worktrees{separator}", StringComparison.OrdinalIgnoreCase);
+            || file.Contains($"{separator}.worktrees{separator}", StringComparison.OrdinalIgnoreCase);
     }
 }

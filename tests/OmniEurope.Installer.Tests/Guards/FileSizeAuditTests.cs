@@ -1,6 +1,6 @@
 // kit-model FileSizeAuditTests 2
 //
-// Guard test for rule STD-FILESIZE (docs/code-rules.md): a production .cs, .razor or .js file stays
+// Guard test for the file size rule: a production .cs, .razor or .js file stays
 // within 600 effective lines, so large services and components are decomposed into real collaborator
 // types before they turn into god files. Blank lines and comments are not counted: documenting a file
 // never costs it its budget. Same counting as the kit's verify-rules.ps1.
@@ -9,10 +9,10 @@
 // production projects are discovered, never listed: every file under the repository's src/ folder is
 // in scope, so a new project is covered the day it is created.
 // Keep the first line of this file in the copy: it tells the kit's verify-rules.ps1 which version of
-// the model the copy implements (STD-KITCOPY).
+// the model the copy implements.
 //
 // When this fails, extract a real collaborator class with its own name and responsibility. Never
-// split a class across Foo.X.cs partial files to dodge the budget (STD-PARTIAL). A whitelist entry
+// split a class across Foo.X.cs partial files to dodge the budget. A whitelist entry
 // is a policy exception that requires the user's explicit approval, with its justification comment.
 
 using System;
@@ -53,7 +53,7 @@ public sealed class FileSizeAuditTests
 
         Assert.True(
             offenders.Count == 0,
-            $"STD-FILESIZE: these production files exceed {MaxLines} effective lines; extract real collaborators, never partials:{Environment.NewLine}"
+            $"These production files exceed {MaxLines} effective lines; extract real collaborators, never partials:{Environment.NewLine}"
             + string.Join(Environment.NewLine, offenders.Select(file => $"  - {file.Path} ({file.Lines} effective lines)")));
     }
 

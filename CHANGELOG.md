@@ -43,7 +43,11 @@ Notable changes to this project are documented here, following the Keep a Change
   (Windows Installer error 2210): it is left out of the `Property` table, which leaves it unset.
 - A product definition with a JSON `null` for a required field or in a list, or an enum given as a number or an
   unknown name, is refused with an error instead of crashing or falling back to another value.
-- A setup executable whose configuration is damaged fails with `1603` instead of an unhandled exception.
+- A setup executable whose configuration is damaged, or whose payload lengths are impossible, fails with `1603`
+  instead of an unhandled exception.
+- `MsiPackageBuilder.Build` and `SetupPackageBuilder.Build` refuse an invalid definition with
+  `InvalidDataException` before writing anything, as loading the same definition from JSON does.
+- `oe-installer` refuses an unknown option with exit code `2` before writing anything, instead of ignoring it.
 - A product name holding a path separator no longer breaks the extraction of the MSI or the log path.
 - The wizard can uninstall a newer installed version, as `/quiet /uninstall` already could.
 - A product version written with non-ASCII digits is refused as invalid instead of crashing.

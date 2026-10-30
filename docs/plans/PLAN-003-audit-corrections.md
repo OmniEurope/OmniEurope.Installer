@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 # PLAN-003 - Audit corrections
 
-Scope: the nine findings of the fresh 2026-10-30 audit. No version change, commit, push or publication.
+Scope: the nine findings of the fresh 2026-10-30 audit. No version change.
 
 ## Acceptance
 
@@ -26,7 +26,7 @@ rejects the same invalid product and payload, still creates the valid MSI, and c
 Real CLI tests reject unknown switches, retain the license on the valid path, and the actual net472 host
 returns 1603 for the malformed trailer before any installation.
 
-Batch 2: 124 tests pass. The same unnecessary partial type builds at the baseline and fails with GEN008 in
+Batch 2: all tests pass (125 after the setup builder validation). The same unnecessary partial type builds at the baseline and fails with GEN008 in
 the current production build. The actual size guard rejects a temporary 604-line production fixture, removed
 after the check. Actual TRX, coverage and CRAP scripts accept the current Release collection and reject
 zero/failed tests, below-floor coverage and an incomplete collection. No guard exception or threshold changed.
@@ -35,3 +35,6 @@ Batch 3: the standard-account scenario is implemented and compiled. Its workstat
 7/5.1 syntax have been checked; the account creation and install/update/uninstall path have not run. The user
 confirmed that no disposable environment is accessible. INT-001 remains open for runtime proof. The modified
 workflow has not run on GitHub; its unit-job commands have run locally in Release without publishing code.
+A review found three defects that would have stopped the scenario; each fix is proved on the real statement, not
+on the whole scenario: the `icacls` SID without `*` (exit 1332, now 0), a missing count on a single entry under
+Windows PowerShell 5.1, and the controller's `TEMP` and `TMP` inherited through `Start-Process -Credential`.

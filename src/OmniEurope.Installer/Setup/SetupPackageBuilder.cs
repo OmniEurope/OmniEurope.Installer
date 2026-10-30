@@ -8,9 +8,10 @@ namespace OmniEurope.Installer.Setup;
 public static class SetupPackageBuilder
 {
     /// <summary>Writes the setup executable described by <paramref name="request"/>.</summary>
-    /// <exception cref="InvalidDataException">The definition has no setup section.</exception>
+    /// <exception cref="InvalidDataException">The definition is invalid or has no setup section.</exception>
     public static void Build(ProductDefinition definition, SetupBuildRequest request)
     {
+        ProductDefinitionValidator.Validate(definition, nameof(definition));
         SetupDefinition setup = definition.Setup
             ?? throw new InvalidDataException($"The definition of {definition.Name} has no 'setup' section.");
         SetupConfig config = CreateConfig(definition, setup, request.MsiPath);
