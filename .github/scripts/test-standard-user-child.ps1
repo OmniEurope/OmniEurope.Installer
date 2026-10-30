@@ -49,7 +49,6 @@ try {
     Assert-Condition (@(Get-FixtureEntry).Count -eq 0) 'The new account already has a fixture installation.'
     Invoke-Setup 'v1' 'install'
     $entry = @(Get-FixtureEntry)
-    Write-Output ('Installed apps entry: ' + (($entry | ForEach-Object PSPath) -join ', '))
     Assert-Condition ($entry.Count -eq 1) 'Installation did not create exactly one entry.'
     Assert-Condition (Test-PerUserProduct) 'Windows Installer does not hold the product for this user.'
     $installedVersion = $entry[0].DisplayVersion

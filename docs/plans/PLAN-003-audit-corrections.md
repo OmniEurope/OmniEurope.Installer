@@ -31,10 +31,12 @@ the current production build. The actual size guard rejects a temporary 604-line
 after the check. Actual TRX, coverage and CRAP scripts accept the current Release collection and reject
 zero/failed tests, below-floor coverage and an incomplete collection. No guard exception or threshold changed.
 
-Batch 3: the standard-account scenario is implemented and compiled. Its workstation refusal and PowerShell
-7/5.1 syntax have been checked; the account creation and install/update/uninstall path have not run. The user
-confirmed that no disposable environment is accessible. INT-001 remains open for runtime proof. The modified
-workflow has not run on GitHub; its unit-job commands have run locally in Release without publishing code.
-A review found three defects that would have stopped the scenario; each fix is proved on the real statement, not
-on the whole scenario: the `icacls` SID without `*` (exit 1332, now 0), a missing count on a single entry under
-Windows PowerShell 5.1, and the controller's `TEMP` and `TMP` inherited through `Start-Process -Credential`.
+Batch 3: the standard-account scenario runs in the `integration` job of the CI, on a disposable Windows Server 2025
+runner. It creates a real account outside Administrators, then installs, updates and uninstalls under that account.
+The run on `a20a1d0` passed 9 of 9 integration tests, this scenario included. INT-001 is closed for that environment;
+a client edition of Windows has not run it.
+The first runs found what the scenario needed, each cause read from the CI output: `Start-Process -Credential` passes
+the controller's environment, so the shell folders came back empty; the child's opt-in check then needs its variables
+at machine level; and Windows Server rejects a non-elevated per-user install with `1625` unless the `DisableMSI`
+policy is 0, set and restored around the scenario. A per-user product's Installed apps entry can sit under HKLM, so the
+tests read the context from Windows Installer instead of the hive.

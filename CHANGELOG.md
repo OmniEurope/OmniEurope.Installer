@@ -25,7 +25,8 @@ Notable changes to this project are documented here, following the Keep a Change
 
 - The MSI is a dual-purpose package: per machine by default (`msiexec`, Group Policy), or for the current user only,
   without administrator rights, with `MSIINSTALLPERUSER=1` (files under `%LOCALAPPDATA%\Programs`, the user's Start
-  menu and desktop, HKCU).
+  menu and desktop, HKCU). Windows Server refuses this to a standard user with `1625` unless the `DisableMSI` policy
+  is 0.
 - The setup executable starts without administrator rights: the wizard asks "for me only" (preselected) or "for all
   users" for a first installation, `/peruser` and `/permachine` choose on the command line, and `/quiet` alone
   installs for all users. A per-machine operation runs the setup again elevated (UAC prompt); an update, repair or
