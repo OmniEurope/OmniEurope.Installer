@@ -4,6 +4,13 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
+### Changed
+
+- CI installs each variant of the packed `oe-installer` tool (.NET 10 and .NET 11) and builds an MSI and a setup with
+  it (`.github/scripts/test-tool.ps1`).
+- The publication workflow refuses a release tag that is not a bare version and a release commit that is not on
+  `main`.
+
 ## [1.0.0] - 2026-11-11
 
 ### Added

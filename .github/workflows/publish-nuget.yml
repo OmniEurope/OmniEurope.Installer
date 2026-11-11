@@ -14,8 +14,14 @@ jobs:
     # Publishing only pushes files, so Linux is enough: the packages were built and checked by CI on Windows.
     runs-on: ubuntu-24.04
     environment: release
+    env:
+      # The tag reaches scripts only through the environment, never spliced into their text.
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history: the release commit must be proved to be on main.
+          fetch-depth: 0
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
@@ -25,7 +31,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if ($env:RELEASE_TAG -cnotmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') { throw "The release tag '$env:RELEASE_TAG' is not a version without prefix (1.0.0)." }
           $releaseSha = (git rev-parse HEAD).Trim()
+          git merge-base --is-ancestor $releaseSha origin/main
+          if ($LASTEXITCODE -ne 0) { throw "The release commit $releaseSha is not on main." }
           $response = gh api "/repos/$env:GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$releaseSha&status=success&per_page=20" | ConvertFrom-Json
           $run = $response.workflow_runs |
             Where-Object { $_.head_sha -ceq $releaseSha -and $_.event -eq 'push' -and $_.conclusion -eq 'success' } |
@@ -41,7 +50,7 @@ jobs:
       - name: Verify version, content, and symbols
         # The release tag is the version without prefix (1.0.0).
         shell: pwsh
-        run: ./.github/scripts/test-packages.ps1 -PackageDirectory artifacts/packages -ExpectedVersion '${{ github.event.release.tag_name }}'
+        run: ./.github/scripts/test-packages.ps1 -PackageDirectory artifacts/packages -ExpectedVersion $env:RELEASE_TAG
       - name: Authenticate to NuGet.org
         id: login
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1

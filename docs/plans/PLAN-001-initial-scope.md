@@ -6,8 +6,10 @@
 > tool; its upgrade check with its own build and a Group Policy test remain. Remaining: automatic updates (lot 5,
 > needs a publication place), adoption by the other applications (lot 6), a complete interactive run of the wizard,
 > and ICE validation. The NuGet packaging of `oe-installer` is done (2026-11-11): library and tool packages
-> `1.0.0` with the setup host bundled, CI pack and content check, publish workflow; publication to NuGet.org is
-> pending (`docs/publishing.md`). Code signing (lot 7) is deferred.
+> `1.0.0` (.NET 10 and .NET 11) with the setup host bundled, CI pack and content check, and the publish workflow
+> (`docs/publishing.md`), whose run for the GitHub release `1.0.0` pushed both packages to NuGet.org on 2026-11-11;
+> their listing on nuget.org and an install from it are not verified yet.
+> Code signing (lot 7) is deferred.
 
 ## Objective
 

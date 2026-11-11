@@ -143,8 +143,9 @@ dotnet test --project tests/OmniEurope.Installer.Tests/OmniEurope.Installer.Test
 ```
 
 Warnings are errors. The continuous integration (`.github/workflows/ci.yml`, Windows) builds the solution and runs
-the unit tests on every push and pull request to `main` and `develop`, then packs the two NuGet packages and checks
-their content. Publication to NuGet.org: [docs/publishing.md](docs/publishing.md).
+the unit tests on .NET 11 and .NET 10 on every push and pull request to `main` and `develop`, then packs the two NuGet
+packages, checks their content and runs each variant of the packed tool. Publication to NuGet.org:
+[docs/publishing.md](docs/publishing.md).
 The unit job collects coverage and enforces 95% line coverage, 85% branch coverage and a maximum CRAP score
 of 30 without exceptions. Both jobs reject missing, empty or unsuccessful TRX results.
 

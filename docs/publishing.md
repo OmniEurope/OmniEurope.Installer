@@ -28,11 +28,14 @@ no API key is stored anywhere.
 
 1. Set the new `Version` in `src/Directory.Build.props` and move the changelog entries under it in `CHANGELOG.md`.
 2. Push `main` (merge `develop` into it) and wait for the `CI` workflow to be green on that commit: it builds, runs
-   the tests, packs both packages, checks their content (`.github/scripts/test-packages.ps1`) and uploads them as the
-   `nuget-package` artifact.
+   the tests, packs both packages, checks their content (`.github/scripts/test-packages.ps1`), installs each variant of
+   the tool from the packed files and builds an MSI and a setup with it on .NET 10 and .NET 11
+   (`.github/scripts/test-tool.ps1`), and uploads the packages as the `nuget-package` artifact.
 3. Create a GitHub Release whose tag is the version without prefix (for example `1.0.0`), targeting `main`, and
    publish it.
-4. Follow the `Publish NuGet` run. It finds the successful CI run of the release commit, downloads the exact
+4. Follow the `Publish NuGet` run. It refuses a tag that is not a bare version and a release commit that is not on
+   `main` (these two checks were added after `1.0.0` was published and first run on the next release), finds the
+   successful CI run of the release commit, downloads the exact
    packages that run built, checks again that their version equals the tag, then pushes each package with
    `--skip-duplicate` (pushing a version that already exists is ignored, not an error).
 5. Check <https://www.nuget.org/packages/OmniEurope.Installer> and
@@ -48,4 +51,5 @@ dotnet build OmniEurope.Installer.slnx -c Release
 dotnet pack src/OmniEurope.Installer/OmniEurope.Installer.csproj -c Release --no-build -o artifacts/packages
 dotnet pack src/OmniEurope.Installer.Tool/OmniEurope.Installer.Tool.csproj -c Release --no-build -o artifacts/packages
 ./.github/scripts/test-packages.ps1 -PackageDirectory artifacts/packages -ExpectedVersion 1.0.0
+./.github/scripts/test-tool.ps1 -PackageDirectory artifacts/packages -Framework net10.0 -Definition tests/OmniEurope.Installer.Tests/Samples/product.json
 ```

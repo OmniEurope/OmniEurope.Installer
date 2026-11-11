@@ -2,7 +2,7 @@ using System.Runtime.Serialization;
 
 namespace OmniEurope.Installer.Setup;
 
-// Shared source: compiled into the library (net11.0) and linked into the setup host (net472), so both
+// Shared source: compiled into the library (net10.0 and net11.0) and linked into the setup host (net472), so both
 // sides read and write exactly the same JSON through DataContractJsonSerializer.
 
 /// <summary>What the setup executable needs to know about the product and the MSI it carries.</summary>
