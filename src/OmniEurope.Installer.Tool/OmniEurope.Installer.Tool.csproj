@@ -5,7 +5,7 @@
   </ItemGroup>
   <PropertyGroup>
     <!-- Command-line front end of the library; not packed yet; how applications call it is set in PLAN-001 (Decisions). -->
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net11.0-windows</TargetFramework>
     <OutputType>Exe</OutputType>
     <AssemblyName>oe-installer</AssemblyName>
     <IsPackable>false</IsPackable>

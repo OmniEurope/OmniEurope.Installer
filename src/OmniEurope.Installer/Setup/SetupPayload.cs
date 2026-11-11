@@ -6,7 +6,7 @@ using System.Text;
 
 namespace OmniEurope.Installer.Setup;
 
-// Shared source (library net10.0 and setup host net472).
+// Shared source (library net11.0 and setup host net472).
 //
 // Layout of a setup executable: the host program, then the payload appended at its end:
 //   [host exe][config JSON][MSI][license RTF][trailer]

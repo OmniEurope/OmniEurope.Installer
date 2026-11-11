@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net11.0-windows</TargetFramework>
     <!-- xunit.v3 runs on Microsoft.Testing.Platform: the test project is its own runner executable. -->
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
