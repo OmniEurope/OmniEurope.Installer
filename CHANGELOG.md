@@ -32,10 +32,9 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ### Changed
 
-- .NET 11: built with the .NET 11 SDK (`global.json` floor 11.0.100); the library targets `net11.0-windows` (and a
-  plain `net11.0` flavor, marked Windows-only, which the tool uses because a .NET tool cannot target a platform);
-  the `oe-installer` tool targets `net11.0`. The setup host stays on .NET Framework 4.7.2 so it runs on any Windows
-  without a .NET runtime.
+- .NET 11: built with the .NET 11 SDK (`global.json` floor 11.0.100); the library and the `oe-installer` tool target
+  `net11.0`, marked Windows-only (a .NET tool cannot target a platform). The setup host stays on .NET Framework 4.7.2
+  so it runs on any Windows without a .NET runtime.
 
 - The MSI is a dual-purpose package: per machine by default (`msiexec`, Group Policy), or for the current user only,
   without administrator rights, with `MSIINSTALLPERUSER=1` (files under `%LOCALAPPDATA%\Programs`, the user's Start

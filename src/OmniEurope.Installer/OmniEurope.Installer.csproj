@@ -1,9 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\analyzers\OmniEurope.Installer.Analyzers.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+  </ItemGroup>
   <PropertyGroup>
-    <!-- msi.dll exists only on Windows: the package targets Windows explicitly (CA1416 then holds). The plain
-         net11.0 flavor exists because a .NET tool cannot target a platform (NETSDK1146): the oe-installer tool
-         references it, and the assembly is marked Windows-only there too. -->
-    <TargetFrameworks>net11.0-windows;net11.0</TargetFrameworks>
+    <!-- msi.dll exists only on Windows: the assembly is marked Windows-only (SupportedOSPlatform below, CA1416 then
+         holds). Plain net11.0 rather than net11.0-windows because the oe-installer .NET tool references it and a
+         .NET tool cannot target a platform (NETSDK1146). -->
+    <TargetFramework>net11.0</TargetFramework>
     <!-- LibraryImport generates the msi.dll marshalling code, which needs unsafe blocks. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Every public member carries an XML doc (CS1591 is an error under TreatWarningsAsErrors). -->
@@ -11,11 +15,11 @@
     <!-- Version and shared package metadata: src/Directory.Build.props. -->
     <PackageId>OmniEurope.Installer</PackageId>
     <Description>Builds Windows Installer packages (MSI) and setup executables for OmniEurope desktop applications.</Description>
-    <PackageTags>installer;msi;auto-update;eupl</PackageTags>
+    <PackageTags>installer;msi;setup;eupl</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net11.0'">
+  <ItemGroup>
     <SupportedOSPlatform Include="windows" />
   </ItemGroup>
 

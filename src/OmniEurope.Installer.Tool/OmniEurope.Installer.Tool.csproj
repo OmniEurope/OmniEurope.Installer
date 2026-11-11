@@ -1,4 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\analyzers\OmniEurope.Installer.Analyzers.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+  </ItemGroup>
   <PropertyGroup>
     <!-- Command-line front end of the library, shipped as a .NET tool: dotnet tool install OmniEurope.Installer.Tool. -->
     <!-- A .NET tool cannot target a platform (NETSDK1146): plain net11.0, marked Windows-only below. -->
