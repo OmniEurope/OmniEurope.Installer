@@ -22,6 +22,7 @@ Notable changes to this project are documented here, following the Keep a Change
   integration tests, mandatory TRX reports.
 
 ### Changed
+- Built with the .NET 11 SDK (`global.json` floor 11.0.100); the library and the tool still target .NET 10.
 
 - The MSI is a dual-purpose package: per machine by default (`msiexec`, Group Policy), or for the current user only,
   without administrator rights, with `MSIINSTALLPERUSER=1` (files under `%LOCALAPPDATA%\Programs`, the user's Start

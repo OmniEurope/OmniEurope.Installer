@@ -141,7 +141,7 @@ neither elevated nor a member of Administrators, and removes the account and pro
 create an account outside the opted-in CI environment. Its installation proof must come from that runner;
 compiling it or running the unit suite does not provide that proof.
 
-Branches: `main` for releases, `develop` for integration, `feature/*` for work in progress.
+Git flow: `main` for released versions, `develop` for integration. Contributors branch `feature/*` from `develop` and open a pull request to `develop`; the maintainer commits to `develop` directly.
 
 ## Dependencies
 
