@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net11.0-windows</TargetFramework>
+    <!-- Both runtimes the packages support: every test runs on .NET 10 and on .NET 11. -->
+    <TargetFramework></TargetFramework>
+    <TargetFrameworks>net10.0-windows;net11.0-windows</TargetFrameworks>
+    <!-- The tool build matching this test flavor (net10.0-windows tests run the net10.0 tool). -->
+    <InstallerToolFramework>$(TargetFramework.Replace('-windows', ''))</InstallerToolFramework>
     <!-- xunit.v3 runs on Microsoft.Testing.Platform: the test project is its own runner executable. -->
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
@@ -18,7 +22,7 @@
     <ProjectReference Include="..\..\src\OmniEurope.Installer\OmniEurope.Installer.csproj" />
     <ProjectReference Include="..\..\src\OmniEurope.Installer.Tool\OmniEurope.Installer.Tool.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\OmniEurope.Installer.Setup\OmniEurope.Installer.Setup.csproj"
-                      ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" />
+                      ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" UndefineProperties="TargetFramework" />
   </ItemGroup>
 
   <ItemGroup>
@@ -39,7 +43,7 @@
     <None Include="Samples\*.json" CopyToOutputDirectory="PreserveNewest" />
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>InstallerTool</_Parameter1>
-      <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\src\OmniEurope.Installer.Tool\bin\$(Configuration)\net11.0\oe-installer.dll'))</_Parameter2>
+      <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\src\OmniEurope.Installer.Tool\bin\$(Configuration)\$(InstallerToolFramework)\oe-installer.dll'))</_Parameter2>
     </AssemblyAttribute>
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>SetupHost</_Parameter1>

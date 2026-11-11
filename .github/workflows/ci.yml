@@ -18,6 +18,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
+          # The SDK of global.json builds; .NET 10 is installed too, since the packages and the tests also target it.
+          dotnet-version: 10.0.x
           global-json-file: global.json
       - name: Restore
         run: dotnet restore OmniEurope.Installer.slnx
@@ -28,6 +30,7 @@ jobs:
         # global.json runs dotnet test on Microsoft.Testing.Platform: xunit.v3 is the runner.
         run: >-
           dotnet test --project tests/OmniEurope.Installer.Tests/OmniEurope.Installer.Tests.csproj
+          --framework net11.0-windows
           --configuration Release --no-build --no-progress
           --coverlet
           --report-trx --report-trx-filename tests.trx --results-directory artifacts/tests
@@ -35,6 +38,16 @@ jobs:
         # A missing, empty or failed run is a failure, never a silent pass.
         shell: pwsh
         run: ./.github/scripts/verify-test-results.ps1 -ResultsDirectory artifacts/tests -ReportName tests.trx
+      - name: Unit tests on .NET 10
+        # The same suite on the other runtime the packages support; coverage is measured once, on .NET 11.
+        run: >-
+          dotnet test --project tests/OmniEurope.Installer.Tests/OmniEurope.Installer.Tests.csproj
+          --framework net10.0-windows
+          --configuration Release --no-build --no-progress
+          --report-trx --report-trx-filename tests-net10.trx --results-directory artifacts/tests-net10
+      - name: Verify .NET 10 test results
+        shell: pwsh
+        run: ./.github/scripts/verify-test-results.ps1 -ResultsDirectory artifacts/tests-net10 -ReportName tests-net10.trx
       - name: Coverage floors
         shell: pwsh
         run: ./.github/scripts/coverage-gate.ps1 -CoverageRoot artifacts/tests

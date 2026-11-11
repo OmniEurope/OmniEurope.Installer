@@ -42,8 +42,8 @@ $packages = @(Get-ChildItem -LiteralPath $PackageDirectory -Filter '*.nupkg' -Fi
 $symbols = @(Get-ChildItem -LiteralPath $PackageDirectory -Filter '*.snupkg' -File)
 
 $expected = @(
-    @{ Id = 'OmniEurope.Installer'; Entries = @('lib/net11.0/OmniEurope.Installer.dll', 'lib/net11.0/OmniEurope.Installer.xml', 'README.md') },
-    @{ Id = 'OmniEurope.Installer.Tool'; Entries = @('tools/net11.0*/any/oe-installer.dll', 'tools/net11.0*/any/DotnetToolSettings.xml', 'tools/net11.0*/any/OmniEurope.Installer.Setup.exe', 'README.md') }
+    @{ Id = 'OmniEurope.Installer'; Entries = @('lib/net10.0/OmniEurope.Installer.dll', 'lib/net10.0/OmniEurope.Installer.xml', 'lib/net11.0/OmniEurope.Installer.dll', 'lib/net11.0/OmniEurope.Installer.xml', 'README.md') },
+    @{ Id = 'OmniEurope.Installer.Tool'; Entries = @('tools/net10.0/any/oe-installer.dll', 'tools/net10.0/any/DotnetToolSettings.xml', 'tools/net10.0/any/OmniEurope.Installer.Setup.exe', 'tools/net11.0/any/oe-installer.dll', 'tools/net11.0/any/DotnetToolSettings.xml', 'tools/net11.0/any/OmniEurope.Installer.Setup.exe', 'README.md') }
 )
 
 if ($packages.Count -ne $expected.Count) {

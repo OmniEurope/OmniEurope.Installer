@@ -32,8 +32,9 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ### Changed
 
-- .NET 11: built with the .NET 11 SDK (`global.json` floor 11.0.100); the library and the `oe-installer` tool target
-  `net11.0`, marked Windows-only (a .NET tool cannot target a platform). The setup host stays on .NET Framework 4.7.2
+- .NET 10 and .NET 11: built with the .NET 11 SDK (`global.json` floor 11.0.100); the library and the `oe-installer`
+  tool target `net10.0` and `net11.0`, marked Windows-only (a .NET tool cannot target a platform), and the unit tests
+  run on both runtimes. The setup host stays on .NET Framework 4.7.2
   so it runs on any Windows without a .NET runtime.
 
 - The MSI is a dual-purpose package: per machine by default (`msiexec`, Group Policy), or for the current user only,

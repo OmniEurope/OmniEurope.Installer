@@ -5,9 +5,11 @@
   </ItemGroup>
   <PropertyGroup>
     <!-- msi.dll exists only on Windows: the assembly is marked Windows-only (SupportedOSPlatform below, CA1416 then
-         holds). Plain net11.0 rather than net11.0-windows because the oe-installer .NET tool references it and a
-         .NET tool cannot target a platform (NETSDK1146). -->
-    <TargetFramework>net11.0</TargetFramework>
+         holds). Plain netX.0 rather than netX.0-windows because the oe-installer .NET tool references it and a
+         .NET tool cannot target a platform (NETSDK1146). .NET 10 (LTS) and .NET 11 applications both use it; the
+         repository-wide TargetFramework is cleared so that TargetFrameworks applies. -->
+    <TargetFramework></TargetFramework>
+    <TargetFrameworks>net10.0;net11.0</TargetFrameworks>
     <!-- LibraryImport generates the msi.dll marshalling code, which needs unsafe blocks. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Every public member carries an XML doc (CS1591 is an error under TreatWarningsAsErrors). -->

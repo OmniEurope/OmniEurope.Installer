@@ -79,9 +79,9 @@ A complete example is [tests/OmniEurope.Installer.Tests/Samples/product.json](te
 
 Two NuGet packages are published (see [docs/publishing.md](docs/publishing.md)):
 
-- `OmniEurope.Installer.Tool`: the `oe-installer` .NET tool, with the setup host bundled. Requires the .NET 11
-  runtime and Windows.
-- `OmniEurope.Installer`: the library, for code that builds packages itself.
+- `OmniEurope.Installer.Tool`: the `oe-installer` .NET tool, with the setup host bundled. Requires Windows and
+  the .NET 10 or .NET 11 runtime.
+- `OmniEurope.Installer`: the library (`net10.0` and `net11.0`), for code that builds packages itself.
 
 A local tool manifest is recommended, so that every machine builds with the same pinned version:
 

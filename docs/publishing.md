@@ -5,7 +5,7 @@ Two packages are published together, with the same version (`Version` in `src/Di
 
 | Package | Content |
 |---|---|
-| `OmniEurope.Installer` | The library (`lib/net11.0`, Windows only): MSI tables, `msi.dll` calls, cabinet writer, setup payload. |
+| `OmniEurope.Installer` | The library (`lib/net10.0` and `lib/net11.0`, Windows only): MSI tables, `msi.dll` calls, cabinet writer, setup payload. |
 | `OmniEurope.Installer.Tool` | The `oe-installer` .NET tool, with the setup host (`OmniEurope.Installer.Setup.exe`) bundled next to `oe-installer.dll`. |
 
 Each package comes with its `.snupkg` symbol package. Nothing is published from a developer machine: the publication

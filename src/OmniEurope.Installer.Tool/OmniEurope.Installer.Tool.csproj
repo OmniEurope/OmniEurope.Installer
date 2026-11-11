@@ -5,8 +5,10 @@
   </ItemGroup>
   <PropertyGroup>
     <!-- Command-line front end of the library, shipped as a .NET tool: dotnet tool install OmniEurope.Installer.Tool. -->
-    <!-- A .NET tool cannot target a platform (NETSDK1146): plain net11.0, marked Windows-only below. -->
-    <TargetFramework>net11.0</TargetFramework>
+    <!-- A .NET tool cannot target a platform (NETSDK1146): plain netX.0, marked Windows-only below. Built for .NET 10
+         (LTS) and .NET 11: dotnet tool install picks the newest one the machine can run. -->
+    <TargetFramework></TargetFramework>
+    <TargetFrameworks>net10.0;net11.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <AssemblyName>oe-installer</AssemblyName>
     <!-- Version and shared package metadata: src/Directory.Build.props. -->
@@ -26,7 +28,7 @@
     <ProjectReference Include="..\OmniEurope.Installer\OmniEurope.Installer.csproj" />
     <!-- The net472 setup host is built first, then shipped next to oe-installer.dll (the default of the host option). -->
     <ProjectReference Include="..\OmniEurope.Installer.Setup\OmniEurope.Installer.Setup.csproj"
-                      ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" />
+                      ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" UndefineProperties="TargetFramework" />
   </ItemGroup>
 
   <ItemGroup>
