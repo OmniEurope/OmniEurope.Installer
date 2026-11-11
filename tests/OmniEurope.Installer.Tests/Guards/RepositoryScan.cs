@@ -11,6 +11,10 @@
 // nested checkout is another branch's code and changes under the scan: a parallel agent deleting a file
 // made two architecture guards throw FileNotFoundException (observed in a nested checkout).
 //
+// Public-repository adaptation of version 2: a nested checkout is recognised by the .git entry (folder
+// or file) at its root instead of by the name of the folder a tool keeps its worktrees in, so every
+// worktree location is skipped without naming any tool. This covers every folder version 2 skips.
+//
 // Copy as is next to the guards that use it (FileSizeAuditTests) and adjust only the namespace. The
 // repository root is the folder holding global.json, found by walking up from the test binary, so no
 // path constant is needed.
@@ -61,21 +65,30 @@ internal static class RepositoryScan
     /// the caller still proves non-empty.
     /// </summary>
     internal static IReadOnlyList<string> EnumerateOptional(string directory, string pattern)
-        => Directory.Exists(directory)
-            ? Directory.EnumerateFiles(directory, pattern, SearchOption.AllDirectories)
-                .Where(file => !IsBuildOutput(Path.DirectorySeparatorChar + Path.GetRelativePath(directory, file)))
-                .ToList()
-            : [];
-
-    /// <summary>Build output and nested checkouts (other branches' code), never part of a scan. Judged on the
-    /// path below the scanned directory: the checkout running the scan may itself live under .worktrees.</summary>
-    private static bool IsBuildOutput(string file)
     {
-        var separator = Path.DirectorySeparatorChar;
-        return file.Contains($"{separator}bin{separator}", StringComparison.OrdinalIgnoreCase)
-            || file.Contains($"{separator}obj{separator}", StringComparison.OrdinalIgnoreCase)
-            || file.Contains($"{separator}node_modules{separator}", StringComparison.OrdinalIgnoreCase)
-            || file.Contains($"{separator}.git{separator}", StringComparison.OrdinalIgnoreCase)
-            || file.Contains($"{separator}.worktrees{separator}", StringComparison.OrdinalIgnoreCase);
+        var files = new List<string>();
+        if (Directory.Exists(directory))
+        {
+            Collect(directory, pattern, files);
+        }
+
+        return files;
     }
+
+    private static readonly HashSet<string> SkippedFolders =
+        new(StringComparer.OrdinalIgnoreCase) { "bin", "obj", "node_modules", ".git", ".worktrees" };
+
+    private static void Collect(string directory, string pattern, List<string> files)
+    {
+        files.AddRange(Directory.EnumerateFiles(directory, pattern));
+        foreach (var child in Directory.EnumerateDirectories(directory).Where(child => !IsSkipped(child)))
+        {
+            Collect(child, pattern, files);
+        }
+    }
+
+    /// <summary>Build output and nested checkouts (other branches' code), never part of a scan. Only folders
+    /// below the scanned directory are judged: the checkout running the scan is itself a checkout.</summary>
+    private static bool IsSkipped(string folder)
+        => SkippedFolders.Contains(Path.GetFileName(folder)) || Path.Exists(Path.Combine(folder, ".git"));
 }
