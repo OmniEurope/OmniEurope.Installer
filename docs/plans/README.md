@@ -14,6 +14,6 @@ describes a piece of work, not the state of the product.
 
 | Plan | Remaining work |
 |---|---|
-| [PLAN-001](PLAN-001-initial-scope.md) | Initial scope: lots 1 to 3 done (MSI, major upgrade, setup executable), lot 4 adopted by a first application (upgrade check with its build and Group Policy test remaining); remaining: automatic update (needs a publication place), other applications, interactive wizard run, ICE validation, NuGet packaging of the tool; code signing deferred |
+| [PLAN-001](PLAN-001-initial-scope.md) | Initial scope: lots 1 to 3 done (MSI, major upgrade, setup executable), lot 4 adopted by a first application (upgrade check with its build and Group Policy test remaining); remaining: automatic update (needs a publication place), other applications, interactive wizard run, ICE validation, publication of the NuGet packages (packaging done); code signing deferred |
 | [PLAN-002](PLAN-002-per-user-or-per-machine-installation.md) | Per-user or per-machine installation: lots 1 and 2 done; remaining: integration scenarios in CI (standard-user scenario added in PLAN-003, execution unverified), Group Policy test, first application commit |
 | [PLAN-003](PLAN-003-audit-corrections.md) | Eight audit corrections verified locally; standard-user scenario implemented but install/update/uninstall proof remains unavailable without a disposable CI runner |

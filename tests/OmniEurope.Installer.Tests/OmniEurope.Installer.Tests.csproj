@@ -39,7 +39,7 @@
     <None Include="Samples\*.json" CopyToOutputDirectory="PreserveNewest" />
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>InstallerTool</_Parameter1>
-      <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\src\OmniEurope.Installer.Tool\bin\$(Configuration)\net11.0-windows\oe-installer.dll'))</_Parameter2>
+      <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\src\OmniEurope.Installer.Tool\bin\$(Configuration)\net11.0\oe-installer.dll'))</_Parameter2>
     </AssemblyAttribute>
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>SetupHost</_Parameter1>

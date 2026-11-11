@@ -5,8 +5,9 @@
 > by unit tests and by integration tests run in CI). Lot 4: a first application builds its installer with this
 > tool; its upgrade check with its own build and a Group Policy test remain. Remaining: automatic updates (lot 5,
 > needs a publication place), adoption by the other applications (lot 6), a complete interactive run of the wizard,
-> ICE validation, and the NuGet packaging of `oe-installer` once a pipeline builds installers. Code signing (lot 7)
-> is deferred.
+> and ICE validation. The NuGet packaging of `oe-installer` is done (2026-11-11): library and tool packages
+> `1.0.0` with the setup host bundled, CI pack and content check, publish workflow; publication to NuGet.org is
+> pending (`docs/publishing.md`). Code signing (lot 7) is deferred.
 
 ## Objective
 

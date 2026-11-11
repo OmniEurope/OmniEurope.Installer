@@ -6,8 +6,10 @@ using OmniEurope.Installer.Setup;
 const string Usage = """
     Usage:
       oe-installer msi   --definition <product.json> --source <published folder> --version <x.y.z> --output <file.msi>
-      oe-installer setup --definition <product.json> --msi <file.msi> --host <OmniEurope.Installer.Setup.exe>
-                         --icon <product executable> [--license <license.rtf>] --output <Setup.exe>
+      oe-installer setup --definition <product.json> --msi <file.msi> --icon <product executable>
+                         [--host <OmniEurope.Installer.Setup.exe>] [--license <license.rtf>] --output <Setup.exe>
+
+    --host defaults to the OmniEurope.Installer.Setup.exe bundled next to this tool.
     """;
 
 string[] commands = ["msi", "setup"];
@@ -17,7 +19,7 @@ if (args.Length == 0 || !commands.Contains(args[0]))
     return 2;
 }
 
-string[] required = args[0] == "msi" ? ["definition", "source", "version", "output"] : ["definition", "msi", "host", "icon", "output"];
+string[] required = args[0] == "msi" ? ["definition", "source", "version", "output"] : ["definition", "msi", "icon", "output"];
 var options = new Dictionary<string, string>(StringComparer.Ordinal);
 for (int index = 1; index < args.Length; index += 2)
 {
@@ -28,7 +30,7 @@ for (int index = 1; index < args.Length; index += 2)
     }
 
     string name = args[index][2..];
-    if (!required.Contains(name) && !(args[0] == "setup" && name == "license"))
+    if (!required.Contains(name) && !(args[0] == "setup" && name is "license" or "host"))
     {
         Console.Error.WriteLine($"Unknown option: {args[index]}");
         Console.Error.WriteLine(Usage);
@@ -56,7 +58,7 @@ try
     }
     else
     {
-        var request = new SetupBuildRequest(options["host"], options["msi"], options.GetValueOrDefault("license"), options["icon"], options["output"]);
+        var request = new SetupBuildRequest(SetupHostLocator.Resolve(options.GetValueOrDefault("host"), AppContext.BaseDirectory), options["msi"], options.GetValueOrDefault("license"), options["icon"], options["output"]);
         SetupPackageBuilder.Build(definition, request);
         Console.WriteLine($"Setup written: {Path.GetFullPath(request.OutputPath)}");
     }

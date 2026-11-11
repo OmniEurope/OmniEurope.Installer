@@ -1,34 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup>
-    <ProjectReference Include="..\..\analyzers\OmniEurope.Installer.Analyzers.csproj"
-                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
-  </ItemGroup>
   <PropertyGroup>
-    <!-- msi.dll exists only on Windows: the package targets Windows explicitly (CA1416 then holds). -->
-    <TargetFramework>net11.0-windows</TargetFramework>
+    <!-- msi.dll exists only on Windows: the package targets Windows explicitly (CA1416 then holds). The plain
+         net11.0 flavor exists because a .NET tool cannot target a platform (NETSDK1146): the oe-installer tool
+         references it, and the assembly is marked Windows-only there too. -->
+    <TargetFrameworks>net11.0-windows;net11.0</TargetFrameworks>
     <!-- LibraryImport generates the msi.dll marshalling code, which needs unsafe blocks. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Every public member carries an XML doc (CS1591 is an error under TreatWarningsAsErrors). -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Version and shared package metadata: src/Directory.Build.props. -->
     <PackageId>OmniEurope.Installer</PackageId>
-    <Version>0.1.0</Version>
-    <Authors>OmniEurope contributors</Authors>
-    <Company>OmniEurope</Company>
     <Description>Builds Windows Installer packages (MSI) and setup executables for OmniEurope desktop applications.</Description>
-    <PackageTags>installer;msi;setup;eupl</PackageTags>
-    <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <RepositoryType>git</RepositoryType>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <PackageTags>installer;msi;auto-update;eupl</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <InternalsVisibleTo Include="OmniEurope.Installer.Tests" />
+  <ItemGroup Condition="'$(TargetFramework)' == 'net11.0'">
+    <SupportedOSPlatform Include="windows" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <InternalsVisibleTo Include="OmniEurope.Installer.Tests" />
   </ItemGroup>
 
 </Project>

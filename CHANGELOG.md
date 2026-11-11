@@ -4,7 +4,16 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-11
+
 ### Added
+
+- NuGet packages `OmniEurope.Installer` (library) and `OmniEurope.Installer.Tool` (the `oe-installer` .NET tool, setup
+  host bundled), version `1.0.0`, with symbol packages; publication workflow `.github/workflows/publish-nuget.yml`
+  (trusted publishing, run when a release is published) and package content check
+  `.github/scripts/test-packages.ps1`, see `docs/publishing.md`.
+- `oe-installer setup`: `--host` is optional and defaults to the setup host bundled next to the tool; an explicit
+  `--host` behaves as before.
 
 - MSI generator: database written through `msi.dll`, embedded MSZIP cabinet, per-machine installation, shortcuts,
   registry values, major upgrade with downgrade refusal; `oe-installer` tool (`msi`, `setup`).
@@ -22,7 +31,11 @@ Notable changes to this project are documented here, following the Keep a Change
   integration tests, mandatory TRX reports.
 
 ### Changed
-- .NET 11: built with the .NET 11 SDK (`global.json` floor 11.0.100); the library and the `oe-installer` tool target `net11.0-windows`. The setup host stays on .NET Framework 4.7.2 so it runs on any Windows without a .NET runtime.
+
+- .NET 11: built with the .NET 11 SDK (`global.json` floor 11.0.100); the library targets `net11.0-windows` (and a
+  plain `net11.0` flavor, marked Windows-only, which the tool uses because a .NET tool cannot target a platform);
+  the `oe-installer` tool targets `net11.0`. The setup host stays on .NET Framework 4.7.2 so it runs on any Windows
+  without a .NET runtime.
 
 - The MSI is a dual-purpose package: per machine by default (`msiexec`, Group Policy), or for the current user only,
   without administrator rights, with `MSIINSTALLPERUSER=1` (files under `%LOCALAPPDATA%\Programs`, the user's Start

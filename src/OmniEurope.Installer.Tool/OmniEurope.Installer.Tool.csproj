@@ -1,18 +1,35 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup>
-    <ProjectReference Include="..\..\analyzers\OmniEurope.Installer.Analyzers.csproj"
-                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
-  </ItemGroup>
   <PropertyGroup>
-    <!-- Command-line front end of the library; not packed yet; how applications call it is set in PLAN-001 (Decisions). -->
-    <TargetFramework>net11.0-windows</TargetFramework>
+    <!-- Command-line front end of the library, shipped as a .NET tool: dotnet tool install OmniEurope.Installer.Tool. -->
+    <!-- A .NET tool cannot target a platform (NETSDK1146): plain net11.0, marked Windows-only below. -->
+    <TargetFramework>net11.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <AssemblyName>oe-installer</AssemblyName>
-    <IsPackable>false</IsPackable>
+    <!-- Version and shared package metadata: src/Directory.Build.props. -->
+    <PackageId>OmniEurope.Installer.Tool</PackageId>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>oe-installer</ToolCommandName>
+    <Description>The oe-installer command-line tool: builds an MSI and a setup executable for a desktop application from its published folder and a JSON product description. The setup host is bundled.</Description>
+    <PackageTags>installer;msi;setup;dotnet-tool;eupl</PackageTags>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
+    <SupportedOSPlatform Include="windows" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\OmniEurope.Installer\OmniEurope.Installer.csproj" />
+    <!-- The net472 setup host is built first, then shipped next to oe-installer.dll (the default of the host option). -->
+    <ProjectReference Include="..\OmniEurope.Installer.Setup\OmniEurope.Installer.Setup.csproj"
+                      ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\OmniEurope.Installer.Setup\bin\$(Configuration)\net472\OmniEurope.Installer.Setup.exe"
+             Link="OmniEurope.Installer.Setup.exe" CopyToOutputDirectory="PreserveNewest" Pack="false" Visible="false" />
+    <Content Include="..\OmniEurope.Installer.Setup\bin\$(Configuration)\net472\OmniEurope.Installer.Setup.exe.config"
+             Link="OmniEurope.Installer.Setup.exe.config" CopyToOutputDirectory="PreserveNewest" Pack="false" Visible="false" />
   </ItemGroup>
 
 </Project>
