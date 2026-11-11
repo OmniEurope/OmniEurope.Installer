@@ -21,6 +21,7 @@ public sealed class SetupScenarioTests : IClassFixture<FixtureProduct>, IDisposa
     {
         _fixture = fixture;
         FixtureProduct.Entries().ShouldBeEmpty("a previous scenario left the fixture installed");
+        Leftovers(FixtureProduct.InstallFolder).ShouldBeEmpty("a previous scenario left files under Program Files");
     }
 
     public void Dispose()
@@ -130,8 +131,36 @@ public sealed class SetupScenarioTests : IClassFixture<FixtureProduct>, IDisposa
         {
             Stop(holding);
             File.Delete(held);
+            RemoveRestartLeftovers();
         }
     }
+
+    /// <summary>
+    /// The update above leaves files that Windows Installer replaces or deletes only at the next restart, and CI never
+    /// restarts: uninstall, then remove what the restart would have removed, so the next scenario starts clean.
+    /// </summary>
+    private void RemoveRestartLeftovers()
+    {
+        if (FixtureProduct.Entries().Count > 0)
+        {
+            _fixture.Run(_fixture.SetupV2, "/uninstall");
+        }
+
+        string manufacturer = Path.GetDirectoryName(FixtureProduct.InstallFolder)!;
+        if (Directory.Exists(FixtureProduct.InstallFolder))
+        {
+            Directory.Delete(FixtureProduct.InstallFolder, recursive: true);
+        }
+
+        if (Directory.Exists(manufacturer) && !Directory.EnumerateFileSystemEntries(manufacturer).Any())
+        {
+            Directory.Delete(manufacturer);
+        }
+    }
+
+    private static string[] Leftovers(string folder) => Directory.Exists(folder)
+        ? [folder, .. Directory.EnumerateFileSystemEntries(folder, "*", SearchOption.AllDirectories)]
+        : [];
 
     [Fact]
     public void A_per_user_install_lands_in_the_user_profile_and_its_uninstall_leaves_nothing()
