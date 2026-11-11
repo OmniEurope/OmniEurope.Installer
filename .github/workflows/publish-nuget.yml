@@ -1,0 +1,61 @@
+name: Publish NuGet
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    # Publishing only pushes files, so Linux is enough: the packages were built and checked by CI on Windows.
+    runs-on: ubuntu-24.04
+    environment: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Resolve the successful CI run for the release commit
+        id: ci
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $releaseSha = (git rev-parse HEAD).Trim()
+          $response = gh api "/repos/$env:GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$releaseSha&status=success&per_page=20" | ConvertFrom-Json
+          $run = $response.workflow_runs |
+            Where-Object { $_.head_sha -ceq $releaseSha -and $_.event -eq 'push' -and $_.conclusion -eq 'success' } |
+            Sort-Object run_number -Descending |
+            Select-Object -First 1
+          if (-not $run) { throw "No successful push CI run found for release commit $releaseSha." }
+          "run_id=$($run.id)" >> $env:GITHUB_OUTPUT
+      - name: Download the exact packages validated by CI
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download '${{ steps.ci.outputs.run_id }}' --repo $env:GITHUB_REPOSITORY --name nuget-package --dir artifacts/packages
+      - name: Verify version, content, and symbols
+        # The release tag is the version without prefix (1.0.0).
+        shell: pwsh
+        run: ./.github/scripts/test-packages.ps1 -PackageDirectory artifacts/packages -ExpectedVersion '${{ github.event.release.tag_name }}'
+      - name: Authenticate to NuGet.org
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+      - name: Publish the validated packages to NuGet.org
+        # Each .nupkg is pushed with its .snupkg symbol package; a version already on nuget.org is skipped.
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          $packages = Get-ChildItem artifacts/packages/*.nupkg | Where-Object Name -NotLike '*.snupkg'
+          if (-not $packages) { throw 'No package to publish.' }
+          foreach ($package in $packages) {
+            dotnet nuget push $package.FullName --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { throw "Publishing $($package.Name) failed." }
+          }

@@ -75,6 +75,24 @@ A complete example is [tests/OmniEurope.Installer.Tests/Samples/product.json](te
 | `setup.legacyBundleUpgradeCodes` | BundleUpgradeCodes of former setup bundles whose Installed apps entry is removed after a successful operation |
 | `setup.licenseNoticeFr` | French note shown above the license text |
 
+## Installing the tool
+
+Two NuGet packages are published (see [docs/publishing.md](docs/publishing.md)):
+
+- `OmniEurope.Installer.Tool`: the `oe-installer` .NET tool, with the setup host bundled. Requires the .NET 11
+  runtime and Windows.
+- `OmniEurope.Installer`: the library, for code that builds packages itself.
+
+A local tool manifest is recommended, so that every machine builds with the same pinned version:
+
+```powershell
+dotnet new tool-manifest
+dotnet tool install OmniEurope.Installer.Tool --version 1.0.0
+dotnet tool run oe-installer
+```
+
+A global install also works: `dotnet tool install --global OmniEurope.Installer.Tool --version 1.0.0`.
+
 ## Building a package
 
 The `oe-installer` tool (`src/OmniEurope.Installer.Tool`) builds the MSI, then the setup executable:
@@ -82,12 +100,13 @@ The `oe-installer` tool (`src/OmniEurope.Installer.Tool`) builds the MSI, then t
 ```powershell
 oe-installer msi   --definition product.json --source <published folder> --version 1.2.3 --output App-1.2.3.msi
 oe-installer setup --definition product.json --msi App-1.2.3.msi `
-                   --host <OmniEurope.Installer.Setup.exe> --icon <published folder>\App.exe `
-                   [--license License.rtf] --output App-1.2.3-Setup.exe
+                   --icon <published folder>\App.exe `
+                   [--host <OmniEurope.Installer.Setup.exe>] [--license License.rtf] --output App-1.2.3-Setup.exe
 ```
 
-`--host` is the setup host built from `src/OmniEurope.Installer.Setup` (.NET Framework 4.7.2, part of Windows);
-`--icon` is the executable whose icon the setup shows.
+`--icon` is the executable whose icon the setup shows. `--host` is the setup host, built from
+`src/OmniEurope.Installer.Setup` (.NET Framework 4.7.2, part of Windows); it is optional and defaults to the host
+bundled next to the tool. Without `--host` and without a bundled host, the tool stops with an error.
 
 ## Running the setup executable
 
@@ -124,7 +143,8 @@ dotnet test --project tests/OmniEurope.Installer.Tests/OmniEurope.Installer.Test
 ```
 
 Warnings are errors. The continuous integration (`.github/workflows/ci.yml`, Windows) builds the solution and runs
-the unit tests on every push and pull request to `main` and `develop`.
+the unit tests on every push and pull request to `main` and `develop`, then packs the two NuGet packages and checks
+their content. Publication to NuGet.org: [docs/publishing.md](docs/publishing.md).
 The unit job collects coverage and enforces 95% line coverage, 85% branch coverage and a maximum CRAP score
 of 30 without exceptions. Both jobs reject missing, empty or unsuccessful TRX results.
 

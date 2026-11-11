@@ -48,6 +48,21 @@ public sealed class ToolCliTests : IDisposable
     }
 
     [Fact]
+    public void Setup_without_host_uses_the_host_bundled_next_to_the_tool()
+    {
+        File.Exists(Path.Combine(Path.GetDirectoryName(Tool)!, SetupHostLocator.BundledFileName)).ShouldBeTrue();
+        string msi = BuildMsi();
+        string output = _temp.Combine("bundled.exe");
+
+        (int code, string text) = Run("setup", "--definition", Definition, "--msi", msi,
+            "--icon", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"), "--output", output);
+
+        code.ShouldBe(0, text);
+        using var input = File.OpenRead(output);
+        SetupPayload.Read(input).Config.ProductName.ShouldBe("Sample App");
+    }
+
+    [Fact]
     public void An_unknown_msi_option_is_refused_before_reading_inputs()
     {
         string output = _temp.Combine("invalid.msi");

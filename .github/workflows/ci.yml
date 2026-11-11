@@ -41,6 +41,20 @@ jobs:
       - name: CRAP gate
         shell: pwsh
         run: ./.github/scripts/crap-gate.ps1 -CoverageRoot artifacts/tests
+      - name: Pack
+        # The library and the oe-installer tool (which bundles the setup host): the exact files a release publishes.
+        run: |
+          dotnet pack src/OmniEurope.Installer/OmniEurope.Installer.csproj --configuration Release --no-build --output artifacts/packages
+          dotnet pack src/OmniEurope.Installer.Tool/OmniEurope.Installer.Tool.csproj --configuration Release --no-build --output artifacts/packages
+      - name: Check package content
+        shell: pwsh
+        run: ./.github/scripts/test-packages.ps1 -PackageDirectory artifacts/packages
+      - name: Upload packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nuget-package
+          path: artifacts/packages
+          if-no-files-found: error
 
   integration:
     # GitHub's Windows runners are disposable and run as administrator: the setup executable is run for
