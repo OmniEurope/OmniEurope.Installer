@@ -185,6 +185,68 @@ public sealed class MsiPackageBuilderTests : IDisposable
         Should.Throw<FileNotFoundException>(() => Build("1.0.0")).Message.ShouldContain("Sample.exe");
     }
 
+    [Theory]
+    [InlineData("Ελληνικά")]
+    [InlineData("日本語")]
+    [InlineData("App €Ł")]
+    public void Text_outside_the_msi_code_page_is_refused_not_stored_as_garbage(string text)
+    {
+        // Observed before the check: the build succeeded and every such character was stored as U+007F (DEL).
+        foreach (ProductDefinition definition in new[]
+        {
+            Definition() with { Name = text },
+            Definition() with { Manufacturer = text },
+            Definition() with { DowngradeErrorMessage = text },
+            Definition() with { Properties = new Dictionary<string, string> { ["P"] = text } },
+            Definition() with { Shortcuts = [Definition().Shortcuts[0] with { Description = text }] },
+        })
+        {
+            string message = Should.Throw<InvalidDataException>(() => MsiPackageBuilder.Build(definition, new MsiBuildRequest(_source, "1.0.0", _temp.Combine("out", "cp.msi")))).Message;
+            message.ShouldContain("Windows-1252");
+        }
+    }
+
+    [Fact]
+    public void Windows_1252_text_outside_ascii_round_trips()
+    {
+        MsiBuildResult result = MsiPackageBuilder.Build(Definition() with { Name = "Café € “App”", Manufacturer = "Éditeur" },
+            new MsiBuildRequest(_source, "1.0.0", _temp.Combine("out", "latin.msi")));
+
+        using MsiDatabase database = MsiDatabase.OpenReadOnly(result.OutputPath);
+        Property(database, "ProductName").ShouldBe("Café € “App”");
+        Property(database, "Manufacturer").ShouldBe("Éditeur");
+    }
+
+    [Theory]
+    [InlineData("CON")]
+    [InlineData("nul.txt")]
+    [InlineData("COM1")]
+    [InlineData("lpt9")]
+    [InlineData("App.")]
+    [InlineData("App ")]
+    [InlineData("A:B")]
+    [InlineData("A*B")]
+    [InlineData("A/B")]
+    public void A_shortcut_name_or_folder_that_is_not_a_windows_file_name_is_refused(string name)
+    {
+        ProductDefinition byName = Definition() with { Shortcuts = [Definition().Shortcuts[0] with { Name = name }] };
+        ProductDefinition byFolder = Definition() with { Shortcuts = [Definition().Shortcuts[1] with { Folder = name }] };
+
+        Should.Throw<InvalidDataException>(() => MsiPackageBuilder.Build(byName, new MsiBuildRequest(_source, "1.0.0", _temp.Combine("out", "n.msi"))))
+            .Message.ShouldContain("invalid name");
+        Should.Throw<InvalidDataException>(() => MsiPackageBuilder.Build(byFolder, new MsiBuildRequest(_source, "1.0.0", _temp.Combine("out", "f.msi"))))
+            .Message.ShouldContain("invalid folder name");
+    }
+
+    [Fact]
+    public void A_shortcut_name_longer_than_a_reasonable_file_name_is_refused()
+    {
+        ProductDefinition definition = Definition() with { Shortcuts = [Definition().Shortcuts[0] with { Name = new string('a', 101) }] };
+
+        Should.Throw<InvalidDataException>(() => MsiPackageBuilder.Build(definition, new MsiBuildRequest(_source, "1.0.0", _temp.Combine("out", "l.msi"))))
+            .Message.ShouldContain("invalid name");
+    }
+
     private MsiBuildResult Build(string version, string fileName = "app.msi") =>
         MsiPackageBuilder.Build(Definition(), new MsiBuildRequest(_source, version, _temp.Combine("out", fileName)));
 
