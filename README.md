@@ -16,6 +16,11 @@ application folder and a short JSON product description. Licensed under EUPL-1.2
   users", license, install folder, options, then update, repair or uninstall), closing of the running application before its files are replaced, and
   a quiet mode for scripted deployment.
 
+Limits: the MSI database uses the Windows-1252 code page, so the product name, manufacturer, messages, shortcut
+names and other text of the product definition must be representable in Windows-1252; the build refuses anything
+else. The files go into a single cabinet, limited to about 2 GiB and 65,535 files. A setup executable signed with
+Authenticode cannot read its payload yet.
+
 ## Product description
 
 A product is described in JSON (comments allowed, unknown fields rejected):

@@ -155,7 +155,7 @@ internal static partial class ProductDefinitionValidator
 
     /// <summary>
     /// The MSI database is written with code page 1252, so any text stored in it must be representable there;
-    /// anything else would be stored as question marks.
+    /// anything else would be stored as U+007F (DEL), silently.
     /// </summary>
     private static void ValidateCodePage(List<string> errors, ProductDefinition definition)
     {
