@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using OmniEurope.Installer.Setup;
 using Shouldly;
@@ -53,7 +54,7 @@ public sealed class SetupHostLogicTests
     public void Choices_become_quoted_properties_with_empty_values_for_unchecked_boxes()
     {
         SetupConfig config = Config();
-        InstallChoices choices = InstallChoices.Defaults(config, @"C:\Program Files");
+        InstallChoices choices = InstallChoices.Defaults(config, @"C:\Program Files", new CultureInfo("fr-FR"));
         choices.Options["INSTALL_STARTUP"] = false;
         choices.InstallFolder = @"D:\Apps\Say ""hi""\";
 
@@ -62,11 +63,62 @@ public sealed class SetupHostLogicTests
         commandLine.ShouldBe(@"INSTALLFOLDER=""D:\Apps\Say """"hi"""""" INSTALL_LANGUAGE=""fr"" INSTALL_DESKTOP_SHORTCUT=""1"" INSTALL_STARTUP="""" EXTRA=""x""");
     }
 
+    [Theory]
+    [InlineData("fr-FR", "fr")]
+    [InlineData("fr-BE", "fr")]
+    [InlineData("de-DE", "en")]
+    [InlineData("en-US", "en")]
+    public void The_language_is_preselected_from_the_windows_ui_culture(string culture, string expected)
+    {
+        InstallChoices.Defaults(Config(), @"C:\Program Files", new CultureInfo(culture)).Language.ShouldBe(expected);
+    }
+
+    [Fact]
+    public void A_recorded_language_wins_over_the_ui_culture()
+    {
+        SetupConfig config = Config();
+        InstallChoices choices = InstallChoices.Defaults(config, @"C:\Program Files", new CultureInfo("fr-FR"));
+
+        choices.ApplySettings(name => name == "Language" ? "en" : null, config);
+
+        choices.Language.ShouldBe("en");
+    }
+
+    [Theory]
+    [InlineData(@"E:\App\", @"E:\App")]
+    [InlineData(@"\\server\share\App", @"\\server\share\App")]
+    public void A_recorded_absolute_folder_is_accepted(string recorded, string expected)
+    {
+        SetupConfig config = Config();
+        InstallChoices choices = InstallChoices.Defaults(config, @"C:\Program Files", new CultureInfo("fr-FR"));
+
+        choices.ApplySettings(name => name == "InstallFolder" ? recorded : null, config);
+
+        choices.InstallFolder.ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(@"relative\App")]
+    [InlineData(@"\App")]
+    [InlineData("C:App")]
+    [InlineData("E:\\Ap\"p|<")]
+    [InlineData("E:\\App\0x")]
+    public void A_recorded_folder_that_is_not_an_absolute_path_is_ignored(string recorded)
+    {
+        SetupConfig config = Config();
+        InstallChoices choices = InstallChoices.Defaults(config, @"C:\Program Files", new CultureInfo("fr-FR"));
+
+        choices.ApplySettings(name => name == "InstallFolder" ? recorded : null, config);
+
+        choices.InstallFolder.ShouldBe(@"C:\Program Files\OmniEurope\App");
+    }
     [Fact]
     public void Recorded_settings_override_the_defaults_and_missing_ones_are_kept()
     {
         SetupConfig config = Config();
-        InstallChoices choices = InstallChoices.Defaults(config, @"C:\Program Files");
+        InstallChoices choices = InstallChoices.Defaults(config, @"C:\Program Files", new CultureInfo("fr-FR"));
         var settings = new Dictionary<string, string> { ["Language"] = "en", ["InstallFolder"] = @"E:\App\", ["Startup"] = "" };
 
         choices.ApplySettings(name => settings.GetValueOrDefault(name), config);

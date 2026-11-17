@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 
@@ -30,9 +31,10 @@ internal sealed class InstallChoices
     public IDictionary<string, bool> Options { get; } = new Dictionary<string, bool>(StringComparer.Ordinal);
 
     /// <summary>The defaults of a first installation under <paramref name="programsFolder"/> (Program Files, or the user's Programs folder).</summary>
-    public static InstallChoices Defaults(SetupConfig config, string programsFolder)
+    public static InstallChoices Defaults(SetupConfig config, string programsFolder, CultureInfo? uiCulture = null)
     {
-        var choices = new InstallChoices(Path.Combine(programsFolder, Path.Combine(config.InstallDirectory)), "fr");
+        string language = (uiCulture ?? CultureInfo.CurrentUICulture).TwoLetterISOLanguageName == "fr" ? "fr" : "en";
+        var choices = new InstallChoices(Path.Combine(programsFolder, Path.Combine(config.InstallDirectory)), language);
         foreach (SetupOption option in config.Options)
         {
             choices.Options[option.Property] = option.DefaultChecked;
@@ -51,7 +53,7 @@ internal sealed class InstallChoices
         }
 
         string? folder = readSetting(InstallFolderSetting);
-        if (!string.IsNullOrWhiteSpace(folder))
+        if (IsAbsoluteLocalPath(folder))
         {
             InstallFolder = folder!.TrimEnd('\\');
         }
@@ -63,6 +65,30 @@ internal sealed class InstallChoices
             {
                 Options[option.Property] = value == "1";
             }
+        }
+    }
+
+    private static bool IsAbsoluteLocalPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || path!.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+        {
+            return false;
+        }
+
+        bool drive = path.Length >= 3 && char.IsLetter(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
+        bool unc = path.StartsWith(@"\\", StringComparison.Ordinal) && path.Length > 2 && path[2] != '\\';
+        if (!drive && !unc)
+        {
+            return false;
+        }
+
+        try
+        {
+            return Path.IsPathRooted(Path.GetFullPath(path));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException or System.Security.SecurityException)
+        {
+            return false;
         }
     }
 
