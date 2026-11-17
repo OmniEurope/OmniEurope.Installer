@@ -1,5 +1,9 @@
 using System.Runtime.InteropServices;
 
+// Every native library this assembly imports (msi.dll, kernel32) comes from System32 only, never from the
+// application folder or the current directory (DLL planting).
+[assembly: DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+
 namespace OmniEurope.Installer.Msi;
 
 /// <summary>
