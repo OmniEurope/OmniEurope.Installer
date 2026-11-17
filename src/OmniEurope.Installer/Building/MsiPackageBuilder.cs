@@ -8,8 +8,9 @@ using OmniEurope.Installer.Product;
 namespace OmniEurope.Installer.Building;
 
 /// <summary>
-/// Builds a per-machine, 64-bit MSI from a product definition and a published folder, with
-/// msi.dll for the database and an embedded MSZIP cabinet for the files.
+/// Builds a 64-bit, dual-purpose MSI (<c>ALLUSERS=2</c> with <c>MSIINSTALLPERUSER</c>: per-user or per-machine,
+/// chosen at install time) from a product definition and a published folder, with msi.dll for the database and an
+/// embedded MSZIP cabinet for the files. The database uses code page 1252, so the definition's text must fit it.
 /// </summary>
 public static partial class MsiPackageBuilder
 {
