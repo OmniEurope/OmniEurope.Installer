@@ -14,6 +14,6 @@ describes a piece of work, not the state of the product.
 
 | Plan | Remaining work |
 |---|---|
-| [PLAN-001](PLAN-001-initial-scope.md) | Initial scope: lots 1 to 3 done (MSI, major upgrade, setup executable), lot 4 adopted by a first application (upgrade check with its build and Group Policy test remaining); remaining: automatic update (needs a publication place), other applications, interactive wizard run, ICE validation (NuGet packages 1.0.0 pushed, listing on nuget.org not verified yet); code signing deferred |
-| [PLAN-002](PLAN-002-per-user-or-per-machine-installation.md) | Per-user or per-machine installation: lots 1 and 2 done; remaining: integration scenarios in CI (standard-user scenario added in PLAN-003, execution unverified), Group Policy test, first application commit |
-| [PLAN-003](PLAN-003-audit-corrections.md) | Eight audit corrections verified locally; standard-user scenario implemented but install/update/uninstall proof remains unavailable without a disposable CI runner |
+| [PLAN-001](PLAN-001-initial-scope.md) | Initial scope: lots 1 to 3 done (MSI, major upgrade, setup executable), lot 4 adopted by a first application (upgrade check with its build and Group Policy test remaining); remaining: automatic update (needs a publication place), other applications, interactive wizard run, ICE validation (NuGet packages 1.0.0 published and installed from nuget.org); code signing deferred |
+| [PLAN-002](PLAN-002-per-user-or-per-machine-installation.md) | Per-user or per-machine installation: lots 1 and 2 done; remaining: Group Policy test, first application commit (the standard-user scenario passed in CI, see PLAN-003) |
+| [PLAN-003](PLAN-003-audit-corrections.md) | Eight audit corrections verified locally; the standard-user scenario passed in the CI `integration` job on `a20a1d0` (9 of 9 tests, Windows Server 2025 runner); a client edition of Windows has not run it |

@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: develop
+    ignore:
+      # The analyzer is loaded by the compiler of the global.json SDK floor: a newer Roslyn is rejected (CS9057).
+      # These packages move only with the SDK floor.
+      - dependency-name: Microsoft.CodeAnalysis.CSharp
+      - dependency-name: Microsoft.CodeAnalysis.CSharp.Workspaces
+      - dependency-name: Microsoft.CodeAnalysis.Workspaces.Common
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: develop

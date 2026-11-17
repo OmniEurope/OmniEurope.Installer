@@ -118,6 +118,7 @@ Without arguments, the setup shows its wizard. On the command line:
 | `/quiet /uninstall` | Removes the product |
 | `/peruser`, `/permachine` | Installs for the current user only (no administrator rights) or for all users; without it, the wizard asks and `/quiet` installs for all users. An installed product keeps its context |
 | `PROPERTY=value` | Overrides a choice, e.g. `INSTALL_DESKTOP_SHORTCUT=` to leave the box unchecked |
+| `/lang fr`, `/lang en` | Wizard language; without it, the wizard starts on its language page |
 | `/log <path>` | Writes the log to this file (default: `%TEMP%`) |
 
 Exit codes are those of Windows Installer:
@@ -146,8 +147,10 @@ Warnings are errors. The continuous integration (`.github/workflows/ci.yml`, Win
 the unit tests on .NET 11 and .NET 10 on every push and pull request to `main` and `develop`, then packs the two NuGet
 packages, checks their content and runs each variant of the packed tool. Publication to NuGet.org:
 [docs/publishing.md](docs/publishing.md).
-The unit job collects coverage and enforces 95% line coverage, 85% branch coverage and a maximum CRAP score
-of 30 without exceptions. Both jobs reject missing, empty or unsuccessful TRX results.
+The unit job collects coverage of the library (`src/OmniEurope.Installer`) and enforces 95% line coverage, 85% branch
+coverage and a maximum CRAP score of 30 without exceptions. The setup host and the tool run as separate processes in
+the tests and are not part of that measure; the host logic without WinForms is unit tested through linked source
+files. Both jobs reject missing, empty or unsuccessful TRX results.
 
 A second job runs `tests/OmniEurope.Installer.IntegrationTests`: the setup executable is run for real, quietly, on a
 throwaway fixture product (install, then uninstall leaving no file, folder, shortcut, entry or setting; update to a

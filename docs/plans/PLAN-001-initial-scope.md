@@ -8,7 +8,8 @@
 > and ICE validation. The NuGet packaging of `oe-installer` is done (2026-11-11): library and tool packages
 > `1.0.0` (.NET 10 and .NET 11) with the setup host bundled, CI pack and content check, and the publish workflow
 > (`docs/publishing.md`), whose run for the GitHub release `1.0.0` pushed both packages to NuGet.org on 2026-11-11;
-> their listing on nuget.org and an install from it are not verified yet.
+> both are listed on nuget.org, and on 2026-11-17 the tool installed from it (`dotnet tool install`, 1.0.0) built an
+> MSI and a setup executable without `--host`.
 > Code signing (lot 7) is deferred.
 
 ## Objective
