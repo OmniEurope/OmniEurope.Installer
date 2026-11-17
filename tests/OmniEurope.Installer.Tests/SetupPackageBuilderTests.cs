@@ -34,6 +34,7 @@ public sealed class SetupPackageBuilderTests : IDisposable
         string extracted = _temp.Combine("extracted.msi");
         SetupPayload.Extract(input, payload.MsiOffset, payload.MsiLength, extracted);
         File.ReadAllBytes(extracted).ShouldBe(File.ReadAllBytes(msi));
+        payload.MsiSha256.ShouldBe(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(msi)));
         string extractedLicense = _temp.Combine("extracted.rtf");
         SetupPayload.Extract(input, payload.LicenseOffset, payload.LicenseLength, extractedLicense);
         File.ReadAllText(extractedLicense).ShouldBe(@"{\rtf1 License}");
@@ -102,11 +103,7 @@ public sealed class SetupPackageBuilderTests : IDisposable
         input.Write(config);
         input.WriteByte(0x4D);
         var writer = new BinaryWriter(input);
-        writer.Write((long)config.Length);
-        writer.Write(1L);
-        writer.Write(0L);
-        writer.Write("OESETUP1"u8.ToArray());
-        writer.Flush();
+        WriteTrailer(writer, config.Length, 1L, 0L);
 
         Should.Throw<InvalidDataException>(() => SetupPayload.Read(input)).Message.ShouldContain("damaged");
     }
@@ -142,25 +139,17 @@ public sealed class SetupPackageBuilderTests : IDisposable
         input.Write(config);
         input.WriteByte(0x4D);
         var writer = new BinaryWriter(input);
-        writer.Write((long)config.Length);
-        writer.Write(1L);
-        writer.Write(0L);
-        writer.Write("OESETUP1"u8.ToArray());
-        writer.Flush();
+        WriteTrailer(writer, config.Length, 1L, 0L);
         Should.Throw<InvalidDataException>(() => SetupPayload.Read(input)).Message.ShouldContain("empty");
     }
 
     [Fact]
     public void Payload_lengths_that_overflow_are_rejected_as_a_damaged_setup()
     {
-        using var input = new MemoryStream(new byte[64]);
+        using var input = new MemoryStream(new byte[96]);
         input.Position = 32;
         using var writer = new BinaryWriter(input, System.Text.Encoding.UTF8, leaveOpen: true);
-        writer.Write(long.MaxValue);
-        writer.Write(long.MaxValue);
-        writer.Write(0L);
-        writer.Write("OESETUP1"u8.ToArray());
-        writer.Flush();
+        WriteTrailer(writer, long.MaxValue, long.MaxValue, 0L);
 
         Should.Throw<InvalidDataException>(() => SetupPayload.Read(input));
     }
@@ -174,16 +163,31 @@ public sealed class SetupPackageBuilderTests : IDisposable
     [InlineData(1L, 1L, long.MaxValue)]
     public void Impossible_payload_part_lengths_are_refused(long configLength, long msiLength, long licenseLength)
     {
-        using var input = new MemoryStream(new byte[64]);
+        using var input = new MemoryStream(new byte[96]);
         input.Position = 32;
         using var writer = new BinaryWriter(input, System.Text.Encoding.UTF8, leaveOpen: true);
-        writer.Write(configLength);
-        writer.Write(msiLength);
-        writer.Write(licenseLength);
+        WriteTrailer(writer, configLength, msiLength, licenseLength);
+
+        Should.Throw<InvalidDataException>(() => SetupPayload.Read(input));
+    }
+
+    [Fact]
+    public void A_payload_of_the_former_format_without_the_msi_hash_is_refused()
+    {
+        // OESETUP1 carried no hash: the host never installs such an MSI unchecked.
+        byte[] config = System.Text.Encoding.UTF8.GetBytes("{\"ProductName\":\"App\"}");
+        using var input = new MemoryStream();
+        input.Write(new byte[64]);
+        input.Write(config);
+        input.WriteByte(0x4D);
+        var writer = new BinaryWriter(input);
+        writer.Write((long)config.Length);
+        writer.Write(1L);
+        writer.Write(0L);
         writer.Write("OESETUP1"u8.ToArray());
         writer.Flush();
 
-        Should.Throw<InvalidDataException>(() => SetupPayload.Read(input));
+        Should.Throw<InvalidDataException>(() => SetupPayload.Read(input)).Message.ShouldContain("carries no product");
     }
 
     [Fact]
@@ -192,6 +196,16 @@ public sealed class SetupPackageBuilderTests : IDisposable
         using var input = new MemoryStream(new byte[5]);
 
         Should.Throw<EndOfStreamException>(() => SetupPayload.Extract(input, 0, 10, _temp.Combine("part.bin")));
+    }
+
+    private static void WriteTrailer(BinaryWriter writer, long configLength, long msiLength, long licenseLength)
+    {
+        writer.Write(configLength);
+        writer.Write(msiLength);
+        writer.Write(licenseLength);
+        writer.Write(new byte[32]);
+        writer.Write("OESETUP2"u8.ToArray());
+        writer.Flush();
     }
 
     private (ProductDefinition Definition, string Msi) BuildMsi()

@@ -37,6 +37,8 @@
     <Compile Include="..\..\src\OmniEurope.Installer.Setup\MsiCommandLines.cs" Link="SetupHost\MsiCommandLines.cs" />
     <Compile Include="..\..\src\OmniEurope.Installer.Setup\SetupFileNames.cs" Link="SetupHost\SetupFileNames.cs" />
     <Compile Include="..\..\src\OmniEurope.Installer.Setup\InstallScope.cs" Link="SetupHost\InstallScope.cs" />
+    <Compile Include="..\..\src\OmniEurope.Installer.Setup\PrivateFolder.cs" Link="SetupHost\PrivateFolder.cs" />
+    <Compile Include="..\..\src\OmniEurope.Installer.Setup\LockedFile.cs" Link="SetupHost\LockedFile.cs" />
   </ItemGroup>
 
   <ItemGroup>
