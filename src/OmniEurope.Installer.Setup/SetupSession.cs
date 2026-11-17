@@ -7,20 +7,25 @@ using Microsoft.Win32;
 namespace OmniEurope.Installer.Setup;
 
 /// <summary>
-/// One run of the setup program: the carried MSI extracted to a temporary folder, the product found
+/// One run of the setup program: the carried MSI extracted to a private temporary folder (see
+/// <see cref="PrivateFolder"/>) and held locked until the end of the run (see <see cref="LockedFile"/>), the product found
 /// on the machine, and the operation itself (close the product, run the MSI, remove a former setup's
 /// entry). Shared by the wizard and the quiet mode.
 /// </summary>
 internal sealed class SetupSession : IDisposable
 {
     private readonly string _workFolder;
+    private readonly LockedFile _msi;
+    private readonly LockedFile? _license;
     private bool _insideMsi;
 
-    private SetupSession(SetupConfig config, string msiPath, string? licensePath, string workFolder, string logPath)
+    private SetupSession(SetupConfig config, LockedFile msi, LockedFile? license, string workFolder, string logPath)
     {
         Config = config;
-        MsiPath = msiPath;
-        LicensePath = licensePath;
+        _msi = msi;
+        _license = license;
+        MsiPath = msi.Path;
+        LicensePath = license?.Path;
         _workFolder = workFolder;
         LogPath = logPath;
         Installed = InstalledProduct.Find(config.UpgradeCode);
@@ -52,11 +57,16 @@ internal sealed class SetupSession : IDisposable
     /// <summary>Raised from the operation's thread with each step, error and setup message.</summary>
     public event Action<string>? Message;
 
-    /// <summary>Reads the payload of <paramref name="setupExecutable"/> and extracts the MSI and license.</summary>
+    /// <summary>
+    /// Reads the payload of <paramref name="setupExecutable"/>, extracts the MSI and license into a private folder and
+    /// locks them; the MSI must match the SHA-256 the payload carries.
+    /// </summary>
+    /// <exception cref="InvalidDataException">The payload is damaged or the extracted MSI does not match its hash.</exception>
     public static SetupSession Open(string setupExecutable, string? logPath)
     {
-        string workFolder = Path.Combine(Path.GetTempPath(), "OmniEurope.Installer", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(workFolder);
+        string workFolder = PrivateFolder.Create(Path.GetTempPath());
+        LockedFile? msi = null;
+        LockedFile? license = null;
         try
         {
             using var input = new FileStream(setupExecutable, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -65,19 +75,22 @@ internal sealed class SetupSession : IDisposable
             string fileName = SetupFileNames.Safe(config.ProductName);
             string msiPath = Path.Combine(workFolder, $"{fileName}-{config.ProductVersion}.msi");
             SetupPayload.Extract(input, payload.MsiOffset, payload.MsiLength, msiPath);
-            string? licensePath = null;
+            msi = LockedFile.Lock(msiPath, payload.MsiSha256);
             if (payload.LicenseLength > 0)
             {
-                licensePath = Path.Combine(workFolder, "license.rtf");
+                string licensePath = Path.Combine(workFolder, "license.rtf");
                 SetupPayload.Extract(input, payload.LicenseOffset, payload.LicenseLength, licensePath);
+                license = LockedFile.Lock(licensePath, null);
             }
 
             string log = logPath ?? Path.Combine(Path.GetTempPath(), $"{fileName}-Setup-{DateTime.Now:yyyyMMdd-HHmmss}.log");
-            return new SetupSession(config, msiPath, licensePath, workFolder, log);
+            return new SetupSession(config, msi, license, workFolder, log);
         }
         catch
         {
             // No session owns the folder yet: a damaged payload or a full disk must not leave a half MSI behind.
+            license?.Dispose();
+            msi?.Dispose();
             Directory.Delete(workFolder, recursive: true);
             throw;
         }
@@ -113,6 +126,12 @@ internal sealed class SetupSession : IDisposable
         uint result;
         try
         {
+            if (action != SetupAction.Uninstall)
+            {
+                // The package Windows Installer is about to read is still the one the setup carries.
+                _msi.Verify();
+            }
+
             result = action switch
             {
                 SetupAction.Uninstall => operation.Uninstall(Installed?.ProductCode ?? Config.ProductCode),
@@ -151,8 +170,11 @@ internal sealed class SetupSession : IDisposable
         return true;
     }
 
+    /// <summary>Releases the extracted files, then deletes the work folder.</summary>
     public void Dispose()
     {
+        _license?.Dispose();
+        _msi.Dispose();
         try
         {
             Directory.Delete(_workFolder, recursive: true);

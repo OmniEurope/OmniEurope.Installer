@@ -85,11 +85,36 @@ public sealed class ToolCliTests : IDisposable
             writer.Write(long.MaxValue);
             writer.Write(long.MaxValue);
             writer.Write(0L);
-            writer.Write("OESETUP1"u8.ToArray());
+            writer.Write(new byte[32]);
+            writer.Write("OESETUP2"u8.ToArray());
         }
 
         // The invalid trailer is rejected before MSI extraction, product lookup or elevation.
         ProcessRunner.Run(damaged, "/quiet").ExitCode.ShouldBe(1603);
+    }
+
+    [Fact]
+    public void The_real_host_refuses_an_msi_that_differs_from_its_carried_hash()
+    {
+        string msi = BuildMsi();
+        string output = _temp.Combine("tampered.exe");
+        (int code, string text) = Run("setup", "--definition", Definition, "--msi", msi, "--host", Host,
+            "--icon", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"), "--output", output);
+        code.ShouldBe(0, text);
+        using (var file = new FileStream(output, FileMode.Open, FileAccess.ReadWrite))
+        {
+            SetupPayload payload = SetupPayload.Read(file);
+            file.Position = payload.MsiOffset + payload.MsiLength / 2;
+            int original = file.ReadByte();
+            file.Position--;
+            file.WriteByte((byte)(original ^ 0xFF));
+        }
+
+        // /render-pages never installs: even if the check failed, the run would only draw the wizard.
+        (int exitCode, string log) = ProcessRunner.Run(output, "/quiet", "/render-pages", _temp.Combine("pages"));
+
+        exitCode.ShouldBe(1603, log);
+        log.ShouldContain("does not match");
     }
 
     private string BuildMsi()
