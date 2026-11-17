@@ -16,3 +16,9 @@ updates:
     schedule:
       interval: weekly
     target-branch: develop
+  - package-ecosystem: dotnet-sdk
+    # Reports a newer SDK than the global.json floor; never a build failure.
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: develop
