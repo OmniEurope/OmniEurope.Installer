@@ -410,7 +410,7 @@ internal sealed class WizardForm : Form
         // Opened through the user's shell (explorer.exe), not as a child of this possibly elevated process: only the .log the setup itself named.
         if (File.Exists(_session.LogPath) && string.Equals(Path.GetExtension(_session.LogPath), ".log", StringComparison.OrdinalIgnoreCase))
         {
-            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{_session.LogPath}\"") { UseShellExecute = false })?.Dispose();
+            Process.Start(new ProcessStartInfo(SetupSession.ExplorerPath, $"\"{_session.LogPath}\"") { UseShellExecute = false })?.Dispose();
         }
     }
 

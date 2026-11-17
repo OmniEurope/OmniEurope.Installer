@@ -123,7 +123,7 @@ Without arguments, the setup shows its wizard. On the command line:
 | `/quiet /uninstall` | Removes the product |
 | `/peruser`, `/permachine` | Installs for the current user only (no administrator rights) or for all users; without it, the wizard asks and `/quiet` installs for all users. An installed product keeps its context |
 | `PROPERTY=value` | Overrides a choice, e.g. `INSTALL_DESKTOP_SHORTCUT=` to leave the box unchecked |
-| `/lang fr`, `/lang en` | Wizard language; without it, the wizard starts on its language page |
+| `/lang fr`, `/lang en` | Wizard language; without it, the wizard starts on its language page. The preselected language, and the one a first `/quiet` installation records, follows the Windows display language (French for French, English otherwise); set the product's language property (e.g. `INSTALL_LANGUAGE=fr`) to choose it |
 | `/log <path>` | Writes the log to this file (default: `%TEMP%`) |
 
 Exit codes are those of Windows Installer:

@@ -4,7 +4,24 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
+### Security
+
+- The setup host and the library load `msi.dll` and every other native library from System32 only
+  (`DefaultDllImportSearchPaths`, `SetDefaultDllDirectories`), never from the folder of the setup program.
+- The setup host extracts the MSI into a private folder (current user, SYSTEM and Administrators only, nothing
+  inherited), keeps it open against writes and deletion until the end of the run, and checks it against the SHA-256
+  the payload now carries before installing or repairing. The log viewer and the installed product are started
+  through Explorer by its full path.
+
 ### Changed
+
+- Setup payload format `OESETUP2` (trailer with the MSI SHA-256, `SetupPayload.MsiSha256`); a setup host refuses a
+  payload of the former format. The host and its payload are always written together by `oe-installer setup`.
+- The product definition is refused when a text stored in the MSI does not fit the Windows-1252 code page (it was
+  stored as U+007F), and when a shortcut name, shortcut folder or install folder is not a valid Windows file name.
+- Wizard: Enter and Escape trigger the primary and Cancel buttons, system colors in high contrast, language
+  preselected from the Windows display language; a recorded install folder is used only when it is an absolute path.
+- The setup host ends with `1603` and a message on a malformed registry value, a denied key or a failed Windows call.
 
 - CI installs each variant of the packed `oe-installer` tool (.NET 10 and .NET 11) and builds an MSI and a setup with
   it (`.github/scripts/test-tool.ps1`).

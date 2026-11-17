@@ -68,6 +68,8 @@ internal sealed class InstallChoices
         }
     }
 
+    // A folder below a drive root (C:\App) or a network share (\\server\share\App): not a bare drive root, which the
+    // trailing-separator trim would turn into a drive-relative "C:", and not a device path (\\?\, \\.\).
     private static bool IsAbsoluteLocalPath(string? path)
     {
         if (string.IsNullOrWhiteSpace(path) || path!.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
@@ -75,8 +77,8 @@ internal sealed class InstallChoices
             return false;
         }
 
-        bool drive = path.Length >= 3 && char.IsLetter(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
-        bool unc = path.StartsWith(@"\\", StringComparison.Ordinal) && path.Length > 2 && path[2] != '\\';
+        bool drive = path.TrimEnd('\\', '/').Length > 3 && char.IsLetter(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
+        bool unc = path.StartsWith(@"\\", StringComparison.Ordinal) && path.Length > 2 && path[2] is not ('\\' or '?' or '.');
         if (!drive && !unc)
         {
             return false;

@@ -105,6 +105,9 @@ public sealed class SetupHostLogicTests
     [InlineData("C:App")]
     [InlineData("E:\\Ap\"p|<")]
     [InlineData("E:\\App\0x")]
+    [InlineData(@"C:\")]
+    [InlineData(@"\\?\C:\App")]
+    [InlineData(@"\\.\C:\App")]
     public void A_recorded_folder_that_is_not_an_absolute_path_is_ignored(string recorded)
     {
         SetupConfig config = Config();

@@ -157,6 +157,10 @@ internal sealed class SetupSession : IDisposable
     public string? InstalledExecutable() =>
         Config.MainComponentId.Length == 0 ? null : InstalledProduct.ComponentPath(Config.ProductCode, Config.MainComponentId);
 
+    /// <summary>Explorer by its full path: a relative name would first be looked for next to the setup program (planting).</summary>
+    public static string ExplorerPath =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
+
     /// <summary>Starts the installed product through Explorer, so it runs without the setup's administrator rights.</summary>
     public bool LaunchProduct()
     {
@@ -166,7 +170,7 @@ internal sealed class SetupSession : IDisposable
             return false;
         }
 
-        Process.Start(new ProcessStartInfo("explorer.exe", $"\"{executable}\"") { UseShellExecute = false })?.Dispose();
+        Process.Start(new ProcessStartInfo(ExplorerPath, $"\"{executable}\"") { UseShellExecute = false })?.Dispose();
         return true;
     }
 
