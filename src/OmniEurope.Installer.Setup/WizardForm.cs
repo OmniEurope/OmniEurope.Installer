@@ -56,7 +56,7 @@ internal sealed class WizardForm : Form
         _icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         Icon = _icon;
 
-        var content = new Panel { Location = Point.Empty, Size = new Size(ClientSize.Width, 318), BackColor = Color.White };
+        var content = new Panel { Location = Point.Empty, Size = new Size(ClientSize.Width, 318), BackColor = SystemColors.Window };
         Controls.Add(content);
         Controls.Add(new Label { Location = new Point(0, 318), Size = new Size(ClientSize.Width, 1), BackColor = Color.FromArgb(200, 200, 200) });
         _cancel = AddButton(ClientSize.Width - 100, OnCancel);
@@ -212,6 +212,9 @@ internal sealed class WizardForm : Form
         _back.Text = _text.Back;
         _cancel.Text = _page == WizardPage.Complete ? _text.Close : _text.Cancel;
         _cancel.Enabled = _page != WizardPage.Progress;
+        // Enter triggers the primary button (Next/Install/Finish), Escape the Cancel/Close button.
+        AcceptButton = _next.Visible ? _next : _cancel;
+        CancelButton = _cancel.Enabled ? _cancel : null;
         SetShield(_next, _page == WizardPage.Scope && SetupDecision.NeedsElevation(ChosenScope(), _elevated));
     }
 
@@ -404,10 +407,10 @@ internal sealed class WizardForm : Form
 
     private void OpenLog()
     {
-        // Opened by file association: only the .log the setup itself named.
+        // Opened through the user's shell (explorer.exe), not as a child of this possibly elevated process: only the .log the setup itself named.
         if (File.Exists(_session.LogPath) && string.Equals(Path.GetExtension(_session.LogPath), ".log", StringComparison.OrdinalIgnoreCase))
         {
-            Process.Start(new ProcessStartInfo(_session.LogPath) { UseShellExecute = true })?.Dispose();
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{_session.LogPath}\"") { UseShellExecute = false })?.Dispose();
         }
     }
 

@@ -21,9 +21,9 @@ internal sealed class WizardPages
     private static readonly Font SmallFont = new("Segoe UI", 8.5f);
     private static readonly Font LaunchFont = new("Segoe UI", 10f);
     private static readonly Font LogFont = new("Consolas", 8f);
-    private static readonly Color HeaderColor = Color.FromArgb(0, 51, 102);
-    private static readonly Color DescriptionColor = Color.FromArgb(60, 60, 60);
-    private static readonly Color HintColor = Color.FromArgb(100, 100, 100);
+    private static readonly Color HeaderColor = SystemInformation.HighContrast ? SystemColors.WindowText : Color.FromArgb(0, 51, 102);
+    private static readonly Color DescriptionColor = SystemInformation.HighContrast ? SystemColors.WindowText : Color.FromArgb(60, 60, 60);
+    private static readonly Color HintColor = SystemInformation.HighContrast ? SystemColors.GrayText : Color.FromArgb(100, 100, 100);
 
     private readonly SetupConfig _config;
     private readonly string? _licensePath;
@@ -99,7 +99,7 @@ internal sealed class WizardPages
 
     private Panel Page(Control content, WizardPage page)
     {
-        var panel = new Panel { Dock = DockStyle.Fill, Visible = false, BackColor = Color.White };
+        var panel = new Panel { Dock = DockStyle.Fill, Visible = false, BackColor = SystemColors.Window };
         content.Controls.Add(panel);
         _panels[page] = panel;
         return panel;
@@ -132,7 +132,7 @@ internal sealed class WizardPages
     {
         AddHeader(page, text => text.LicenseHeader);
         AddDescription(page, text => text.LicenseInfo, 68);
-        LicenseBox = new RichTextBox { Location = new Point(24, 100), Size = new Size(450, 160), ReadOnly = true, BorderStyle = BorderStyle.FixedSingle, Font = BodyFont, BackColor = Color.White };
+        LicenseBox = new RichTextBox { Location = new Point(24, 100), Size = new Size(450, 160), ReadOnly = true, BorderStyle = BorderStyle.FixedSingle, Font = BodyFont, BackColor = SystemColors.Window };
         page.Controls.Add(LicenseBox);
         AcceptBox = new CheckBox { Font = BodyFont, Location = new Point(24, 272), AutoSize = true };
         page.Controls.Add(AcceptBox);
@@ -168,7 +168,7 @@ internal sealed class WizardPages
         Log = new TextBox
         {
             Location = new Point(24, 190), Size = new Size(450, 110), Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical,
-            Font = LogFont, BackColor = Color.FromArgb(245, 245, 245), ForeColor = Color.FromArgb(80, 80, 80), BorderStyle = BorderStyle.FixedSingle,
+            Font = LogFont, BackColor = SystemInformation.HighContrast ? SystemColors.Window : Color.FromArgb(245, 245, 245), ForeColor = SystemInformation.HighContrast ? SystemColors.WindowText : Color.FromArgb(80, 80, 80), BorderStyle = BorderStyle.FixedSingle,
         };
         page.Controls.Add(Log);
     }
@@ -203,7 +203,7 @@ internal sealed class WizardPages
         Track(page, new Label { Font = DescriptionFont, ForeColor = DescriptionColor, Location = new Point(24, y), Size = new Size(450, 40) }, text);
 
     private Label AddLabel(Panel page, System.Func<WizardText, string> text, int y, Font? font = null, Color? color = null, int left = 24) =>
-        Track(page, new Label { Font = font ?? LabelFont, ForeColor = color ?? SystemColors.ControlText, Location = new Point(left, y), AutoSize = true }, text);
+        Track(page, new Label { Font = font ?? LabelFont, ForeColor = color ?? SystemColors.WindowText, Location = new Point(left, y), AutoSize = true }, text);
 
     private Label Track(Panel page, Label label, System.Func<WizardText, string> text)
     {
